@@ -154,7 +154,7 @@ export default function InventoryPage() {
     expiring: products.filter((p) => { const st = getExpiryStatus(p.expiryDate); return st === 'warning' || st === 'critical'; }).length,
   };
 
-  const f = field => (e: any) => setForm(prev => ({ ...prev, [field]: e.target.value }));
+  const f = (field: string) => (e: any) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
   return (
     <>

@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
-export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Card({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={cn('rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5', className)}>
+    <div className={cn('rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5', className)} style={style}>
       {children}
     </div>
   );
