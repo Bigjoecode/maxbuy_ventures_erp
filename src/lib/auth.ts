@@ -1,8 +1,30 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+/**
+ * Resolves the JWT signing secret. Fails fast in production if it is missing
+ * or too weak — never falls back to a hardcoded secret in a live deployment.
+ * In development a clearly-flagged insecure fallback is allowed for convenience.
+ */
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (secret && secret.length >= 32) return secret;
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'JWT_SECRET is missing or shorter than 32 characters. Refusing to sign/verify tokens in production. ' +
+        'Set a strong JWT_SECRET in the environment.'
+    );
+  }
+
+  console.warn(
+    '[auth] JWT_SECRET is missing or weak — using an INSECURE development-only fallback. ' +
+      'Set a 32+ character JWT_SECRET in .env before deploying.'
+  );
+  return secret || 'dev-only-insecure-secret-change-me-32+chars';
+}
 
 export interface AuthTokenPayload {
   staffId: string;
@@ -13,12 +35,12 @@ export interface AuthTokenPayload {
 
 export function signToken(payload: AuthTokenPayload): string {
   const options: jwt.SignOptions = { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
-  return jwt.sign(payload, JWT_SECRET, options);
+  return jwt.sign(payload, getJwtSecret(), options);
 }
 
 export function verifyToken(token: string): AuthTokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
+    return jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
   } catch {
     return null;
   }

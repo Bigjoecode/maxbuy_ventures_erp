@@ -29,6 +29,11 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 | R8 | Data integrity | No soft-delete/recovery; `ActivityLog` exists but coverage is partial; no encrypted backup strategy. | 🟠 Med |
 | R9 | Packaging | No Capacitor (Android) or Electron/Tauri (desktop). | 🟠 Med |
 | R10 | DevOps | No Docker, CI/CD, or automated tests. | 🟠 Med |
+| R11 | Deps | `jspdf`/`jspdf-autotable` (invoice & receipt PDFs) have a critical ReDoS + bundled DOMPurify XSS; fix needs the breaking jspdf v3 upgrade + receipt re-test. | 🔴 High |
+
+## Progress log
+- **2026-06-22:** Established clean build baseline (deps installed, Prisma client generated, 3 blocking type errors fixed, `next build` green).
+- **2026-06-22:** Phase 1 started — upgraded Next.js 14.2.5 → 14.2.35 (security patch); R1 JWT secret now fails fast in production; removed the wildcard image `remotePatterns` (Image Optimizer DoS/SSRF). Remaining audit items: R11 (jspdf, tracked) + dev-only transitive (glob/eslint/postcss, deferred).
 
 ## 3. Phased plan
 
