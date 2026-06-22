@@ -1,0 +1,257 @@
+// Maxbuy Ventures ERP — Database Schema
+// Run `npx prisma db push` after configuring DATABASE_URL in .env
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // change to "sqlite" for local dev if preferred
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  MANAGER
+  CASHIER
+  STOCK_KEEPER
+  SALES_REP
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  POS
+  CREDIT
+}
+
+enum CustomerType {
+  RETAIL
+  WHOLESALE
+  VIP
+}
+
+enum ExpenseCategory {
+  RENT
+  ELECTRICITY
+  TRANSPORT
+  STAFF_SALARY
+  RESTOCKING
+  REPAIRS
+  OTHER
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  staff     Staff[]
+  products  Product[]
+  sales     Sale[]
+  expenses  Expense[]
+}
+
+model Staff {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  phone        String?
+  role         Role     @default(CASHIER)
+  isActive     Boolean  @default(true)
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id])
+  lastActiveAt DateTime?
+  createdAt    DateTime @default(now())
+
+  sales        Sale[]
+  expenses     Expense[]
+  activityLogs ActivityLog[]
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  emoji    String?
+  products Product[]
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  name         String
+  contactName  String?
+  phone        String?
+  email        String?
+  productsSupplied String?
+  balanceOwed  Float    @default(0)
+  lastOrderAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  products     Product[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  sku           String?  @unique
+  barcode       String?  @unique
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  branchId      String?
+  branch        Branch?  @relation(fields: [branchId], references: [id])
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+
+  costPrice     Float
+  sellingPrice  Float
+  unit          String   @default("Piece") // Piece, Carton, Pack, Bag, Bottle, Kg
+  unitsPerCarton Int?    // for carton/batch quantity management
+
+  stockQuantity Int      @default(0)
+  lowStockAlert Int      @default(10)
+
+  expiryDate    DateTime?
+  batchNumber   String?
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  saleItems     SaleItem[]
+  stockMovements StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([categoryId])
+  @@index([barcode])
+}
+
+model StockMovement {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  change     Int      // positive = stock in, negative = stock out
+  reason     String   // "sale", "restock", "adjustment", "expired", "return"
+  reference  String?  // sale id or PO id
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Customer {
+  id            String       @id @default(cuid())
+  name          String
+  phone         String       @unique
+  email         String?
+  address       String?
+  type          CustomerType @default(RETAIL)
+  loyaltyPoints Int          @default(0)
+  totalSpent    Float        @default(0)
+  createdAt     DateTime     @default(now())
+
+  sales         Sale[]
+  debts         Debt[]
+}
+
+model Sale {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  staffId       String
+  staff         Staff         @relation(fields: [staffId], references: [id])
+  branchId      String?
+  branch        Branch?       @relation(fields: [branchId], references: [id])
+
+  subtotal      Float
+  discountPct   Float         @default(0)
+  totalAmount   Float
+  paymentMethod PaymentMethod @default(CASH)
+  isRefunded    Boolean       @default(false)
+
+  createdAt     DateTime      @default(now())
+
+  items         SaleItem[]
+  debt          Debt?
+
+  @@index([createdAt])
+  @@index([customerId])
+}
+
+model SaleItem {
+  id         String  @id @default(cuid())
+  saleId     String
+  sale       Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Float
+  lineTotal  Float
+}
+
+model Debt {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  saleId      String?  @unique
+  sale        Sale?    @relation(fields: [saleId], references: [id])
+  amount      Float
+  amountPaid  Float    @default(0)
+  description String?
+  dueDate     DateTime?
+  isSettled   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([customerId])
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  category    ExpenseCategory
+  description String?
+  amount      Float
+  branchId    String?
+  branch      Branch?         @relation(fields: [branchId], references: [id])
+  recordedById String
+  recordedBy  Staff           @relation(fields: [recordedById], references: [id])
+  date        DateTime        @default(now())
+
+  @@index([date])
+}
+
+model PurchaseOrder {
+  id         String   @id @default(cuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  status     String   @default("PENDING") // PENDING, RECEIVED, CANCELLED
+  totalCost  Float    @default(0)
+  createdAt  DateTime @default(now())
+
+  items      PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitCost        Float
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id])
+  action    String   // e.g. "LOGIN", "SALE_CREATED", "PRODUCT_UPDATED"
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([staffId])
+  @@index([createdAt])
+}
