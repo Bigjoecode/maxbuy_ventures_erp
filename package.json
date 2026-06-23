@@ -25,6 +25,7 @@
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "dexie": "^4.4.4",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
@@ -44,6 +45,7 @@
   "devDependencies": {
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.35",
+    "sharp": "^0.35.2",
     "tsx": "^4.16.2"
   },
   "engines": {

@@ -1,0 +1,97 @@
+/* Maxbuy Ventures service worker — offline app shell + static caching.
+ * Data (products, customers, queued sales) is handled in the app via IndexedDB
+ * (Dexie), NOT here, so this SW deliberately ignores /api requests and never
+ * caches mutations. */
+const VERSION = 'v1';
+const STATIC_CACHE = `maxbuy-static-${VERSION}`;
+const PAGE_CACHE = `maxbuy-pages-${VERSION}`;
+const OFFLINE_URL = '/offline';
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(PAGE_CACHE);
+      await cache.add(OFFLINE_URL).catch(() => {});
+      await self.skipWaiting();
+    })()
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => !k.endsWith(VERSION)).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })()
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+function isStaticAsset(url) {
+  return (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/icons/') ||
+    /\.(?:css|js|png|jpg|jpeg|gif|svg|webp|woff2?|ico)$/.test(url.pathname)
+  );
+}
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET') return; // never cache mutations
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return; // let the browser handle CDN assets
+  if (url.pathname.startsWith('/api/')) return; // data layer owns these (Dexie)
+
+  // Static assets: stale-while-revalidate.
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        const cached = await cache.match(request);
+        const network = fetch(request)
+          .then((res) => {
+            if (res.ok) cache.put(request, res.clone());
+            return res;
+          })
+          .catch(() => cached);
+        return cached || network;
+      })()
+    );
+    return;
+  }
+
+  // Page navigations: network-first, fall back to cached page, then offline page.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const res = await fetch(request);
+          const cache = await caches.open(PAGE_CACHE);
+          cache.put(request, res.clone());
+          return res;
+        } catch {
+          const cache = await caches.open(PAGE_CACHE);
+          return (await cache.match(request)) || (await cache.match(OFFLINE_URL)) || Response.error();
+        }
+      })()
+    );
+  }
+});
+
+// Background Sync: when connectivity returns, ask open clients to flush the
+// offline sales queue. (The app also syncs on the window 'online' event, so
+// this is a best-effort enhancement for browsers that support Background Sync.)
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'maxbuy-sync-sales') {
+    event.waitUntil(
+      (async () => {
+        const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+        for (const client of clients) client.postMessage({ type: 'SYNC_SALES' });
+      })()
+    );
+  }
+});
