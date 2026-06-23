@@ -129,6 +129,13 @@ async function main() {
     ],
   });
 
+  // Invoice counter — initialized to the highest seeded invoice number.
+  await prisma.counter.upsert({
+    where: { name: 'invoice' },
+    create: { name: 'invoice', value: 1 },
+    update: { value: 1 },
+  });
+
   console.log('Seed complete. Sale created:', sale1.invoiceNumber);
   console.log('Login with admin / maxbuy2024');
 }

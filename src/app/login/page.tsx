@@ -75,6 +75,12 @@ export default function LoginPage() {
           {error && <p className="text-xs text-[var(--red)]">❌ {error}</p>}
         </form>
 
+        <p className="mt-3 text-center text-[12px]">
+          <a href="/forgot-password" className="text-[var(--green)] hover:underline">
+            Forgot password?
+          </a>
+        </p>
+
         <p className="mt-4 text-center text-[11px] text-gray-400">
           Demo: admin / maxbuy2024 &nbsp;|&nbsp; Staff: amara / staff123
         </p>

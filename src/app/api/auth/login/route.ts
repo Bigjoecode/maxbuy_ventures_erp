@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { comparePassword, signAccessToken } from '@/lib/auth';
 import { createSession } from '@/lib/session';
 import { setAuthCookies } from '@/lib/authCookies';
+import { rateLimit, clientIp } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +11,15 @@ export async function POST(req: NextRequest) {
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+    }
+
+    // Throttle brute-force: 10 attempts / 5 min per IP+username.
+    const limit = rateLimit(`login:${clientIp(req)}:${username}`, 10, 5 * 60 * 1000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many login attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+      );
     }
 
     const staff = await prisma.staff.findUnique({ where: { username } });

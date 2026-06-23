@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Store, SlidersHorizontal, Database, ShieldCheck, Moon, Sun } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Topbar } from '@/components/layout/Topbar';
+import { useRouter } from 'next/navigation';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button, FormGroup, Input, Select } from '@/components/ui';
 import { useUIStore } from '@/store/authStore';
+import { SessionsManager } from '@/components/settings/SessionsManager';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { darkMode, toggleDarkMode } = useUIStore();
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [whatsappReceipts, setWhatsappReceipts] = useState(true);
@@ -100,20 +103,20 @@ export default function SettingsPage() {
           <Card>
             <CardTitle icon={ShieldCheck}>Security</CardTitle>
             <div className="space-y-2">
-              <button onClick={() => toast('Password change: implement PATCH /api/auth/password endpoint')} className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text)] hover:bg-[var(--border)]">
-                🔑 Change Password
+              <button onClick={() => router.push('/forgot-password')} className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text)] hover:bg-[var(--border)]">
+                🔑 Change Password (via reset code)
               </button>
               <button onClick={() => toast('2FA: integrate with Authy or Google Authenticator via TOTP library')} className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text)] hover:bg-[var(--border)]">
                 📱 Enable Two-Factor Authentication
               </button>
-              <button onClick={() => toast.error('This will clear all session data')} className="flex w-full items-center gap-2 rounded-lg border border-[var(--red)] bg-[var(--red-light)] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--red)] hover:bg-[var(--red)] hover:text-white transition-colors">
-                ⚠️ Sign Out All Devices
-              </button>
             </div>
-            <div className="mt-4 rounded-lg bg-[var(--blue-light)] p-3 text-[12px] text-blue-700 dark:text-blue-300">
-              <strong>Developer note:</strong> Extend security with TOTP-based 2FA (otpauth library), IP allowlist, and session tokens stored in Redis for production deployments.
+            <div className="mt-4 rounded-lg bg-[var(--green-light)] p-3 text-[12px] text-[var(--green-dark)]">
+              ✅ httpOnly cookie sessions with rotating refresh tokens active. Manage signed-in devices below.
             </div>
           </Card>
+
+          {/* Active sessions / devices */}
+          <SessionsManager />
         </div>
       </div>
     </>

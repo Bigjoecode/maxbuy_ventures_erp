@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { nextInvoiceNumber } from '@/lib/invoice';
 import { z } from 'zod';
 
 const saleItemSchema = z.object({
@@ -64,6 +65,10 @@ export async function POST(req: NextRequest) {
   }
   const { customerId, items, discountPct, paymentMethod, isCreditSale, dueDate } = parsed.data;
 
+  // Reserve the invoice number up-front (atomic, outside the transaction) so the
+  // counter's row lock is not held for the whole sale — keeps checkout fast.
+  const invoiceNumber = await nextInvoiceNumber(prisma);
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       // 1. Fetch products and validate stock availability
@@ -86,12 +91,7 @@ export async function POST(req: NextRequest) {
 
       const totalAmount = subtotal * (1 - discountPct / 100);
 
-      // 2. Generate next invoice number
-      const lastSale = await tx.sale.findFirst({ orderBy: { createdAt: 'desc' }, select: { invoiceNumber: true } });
-      const lastNum = lastSale ? parseInt(lastSale.invoiceNumber.replace('INV-', ''), 10) : 0;
-      const invoiceNumber = `INV-${String(lastNum + 1).padStart(4, '0')}`;
-
-      // 3. Create the sale + items
+      // 3. Create the sale + items (invoiceNumber reserved above)
       const sale = await tx.sale.create({
         data: {
           invoiceNumber,
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
       });
 
       return sale;
-    });
+    }, { timeout: 15000, maxWait: 10000 });
 
     return NextResponse.json({ sale: result }, { status: 201 });
   } catch (err: any) {

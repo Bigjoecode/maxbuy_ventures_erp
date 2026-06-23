@@ -72,6 +72,20 @@ model Staff {
   expenses     Expense[]
   activityLogs ActivityLog[]
   sessions     Session[]
+  passwordResetOtps PasswordResetOtp[]
+}
+
+model PasswordResetOtp {
+  id         String    @id @default(cuid())
+  staffId    String
+  staff      Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  codeHash   String    // SHA-256 of the 6-digit code (raw code never stored)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([staffId])
 }
 
 model Session {
@@ -258,6 +272,13 @@ model PurchaseOrderItem {
   product         Product       @relation(fields: [productId], references: [id])
   quantity        Int
   unitCost        Float
+}
+
+// Atomic counters (e.g. invoice numbers). Incremented inside a transaction
+// with a row lock so concurrent checkouts can never produce duplicates.
+model Counter {
+  name  String @id
+  value Int    @default(0)
 }
 
 model ActivityLog {

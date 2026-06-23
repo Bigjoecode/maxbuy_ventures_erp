@@ -36,6 +36,7 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 - **2026-06-22:** Phase 1 started — upgraded Next.js 14.2.5 → 14.2.35 (security patch); R1 JWT secret now fails fast in production; removed the wildcard image `remotePatterns` (Image Optimizer DoS/SSRF). Remaining audit items: R11 (jspdf, tracked) + dev-only transitive (glob/eslint/postcss, deferred).
 - **2026-06-22:** Staging live on Vercel + Neon (schema pushed + seeded; admin login working).
 - **2026-06-23:** R2 + R4 done — httpOnly cookie auth with rotating refresh tokens and revocable `Session` model. Added `/api/auth/{refresh,logout,me}`, client silent-refresh, server-validated route gating. Full lifecycle smoke-tested (login/me/refresh/rotation/reuse-detection/logout) — all green.
+- **2026-06-23:** **Phase 1 complete.** R3 (atomic invoice numbers, race-fixed + throughput fix), R5 (rate limiting, CSP/security headers, CSRF Origin check), OTP password reset, and multi-device session management. All smoke-tested live: CSRF 403/200, 8 concurrent sales → unique invoices, OTP reset + reuse-block, rate-limit 429, sessions current-flag. Test data cleaned from staging.
 
 ## 3. Phased plan
 
@@ -51,10 +52,12 @@ Phasing note: you chose **Offline/PWA** as the first focus. Offline depends on a
 - [x] **R1:** Require `JWT_SECRET` at boot (fail fast if unset/default).
 - [x] **R2:** Move JWT to httpOnly, Secure, SameSite cookies; drop token from localStorage. `requireAuth` reads the cookie (Bearer fallback for API clients).
 - [x] **R4:** Refresh-token rotation (15m access + 7d rotating refresh, hashed + revocable `Session` model); login/refresh/logout/me endpoints; reuse-detection revokes session.
-- [ ] **R4 (remainder):** Multi-device session list + "log out other devices" UI.
-- [ ] **R3:** Replace invoice numbering with a DB sequence or dedicated counter row updated inside the transaction.
-- [ ] **R5:** Add rate limiting (per-IP/per-user), security headers/CSP, and CSRF protection for cookie-based mutations.
-- [ ] Password reset + OTP flow (email/SMS provider stubbed via existing `SMS_API_KEY`).
+- [x] **R4 (remainder):** Multi-device session list + "log out other devices" UI (Settings → Active Sessions).
+- [x] **R3:** Atomic invoice numbering via `Counter` row; number reserved before the sale transaction so the lock isn't held during checkout (verified: 8 concurrent sales → unique numbers).
+- [x] **R5:** Rate limiting (login + reset endpoints), security headers/CSP, and Origin-based CSRF protection for cookie mutations.
+- [x] Password reset + OTP flow — `/api/auth/forgot-password` + `/reset-password`, hashed codes, attempt limits, session revocation on reset; provider-agnostic `notify.ts` seam (logs in dev until Termii/Twilio is wired).
+
+**Phase 1 is complete.** Remaining hardening that can come later: nonce-based CSP, distributed (Redis) rate limiting for multi-instance hosting, TOTP 2FA, and R11 (jspdf upgrade).
 
 ### Phase 2 — Offline-first PWA (2.5 weeks) — *your priority*
 - [ ] Web app manifest + icons + "Add to Home Screen" + install prompt.
