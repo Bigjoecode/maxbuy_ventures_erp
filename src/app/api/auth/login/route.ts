@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, signToken } from '@/lib/auth';
+import { comparePassword, signAccessToken } from '@/lib/auth';
+import { createSession } from '@/lib/session';
+import { setAuthCookies } from '@/lib/authCookies';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,12 +23,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = signToken({
+    const accessToken = signAccessToken({
       staffId: staff.id,
       username: staff.username,
       role: staff.role,
       branchId: staff.branchId,
     });
+    const { refreshCookieValue, refreshExpiresAt } = await createSession(staff.id, req);
 
     await prisma.staff.update({ where: { id: staff.id }, data: { lastActiveAt: new Date() } });
     await prisma.activityLog.create({
@@ -40,8 +43,7 @@ export async function POST(req: NextRequest) {
       .slice(0, 2)
       .toUpperCase();
 
-    return NextResponse.json({
-      token,
+    const res = NextResponse.json({
       user: {
         staffId: staff.id,
         name: staff.name,
@@ -50,6 +52,8 @@ export async function POST(req: NextRequest) {
         avatar: initials,
       },
     });
+    setAuthCookies(res, accessToken, refreshCookieValue, refreshExpiresAt);
+    return res;
   } catch (err) {
     console.error('Login error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

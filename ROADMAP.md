@@ -34,6 +34,8 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 ## Progress log
 - **2026-06-22:** Established clean build baseline (deps installed, Prisma client generated, 3 blocking type errors fixed, `next build` green).
 - **2026-06-22:** Phase 1 started — upgraded Next.js 14.2.5 → 14.2.35 (security patch); R1 JWT secret now fails fast in production; removed the wildcard image `remotePatterns` (Image Optimizer DoS/SSRF). Remaining audit items: R11 (jspdf, tracked) + dev-only transitive (glob/eslint/postcss, deferred).
+- **2026-06-22:** Staging live on Vercel + Neon (schema pushed + seeded; admin login working).
+- **2026-06-23:** R2 + R4 done — httpOnly cookie auth with rotating refresh tokens and revocable `Session` model. Added `/api/auth/{refresh,logout,me}`, client silent-refresh, server-validated route gating. Full lifecycle smoke-tested (login/me/refresh/rotation/reuse-detection/logout) — all green.
 
 ## 3. Phased plan
 
@@ -46,9 +48,10 @@ Phasing note: you chose **Offline/PWA** as the first focus. Offline depends on a
 - [ ] Verify build + Prisma migrate against a real PostgreSQL instance.
 
 ### Phase 1 — Security foundation (1.5 weeks) — *prerequisite for safe offline*
-- [ ] **R1:** Require `JWT_SECRET` at boot (fail fast if unset/default).
-- [ ] **R2:** Move JWT to httpOnly, Secure, SameSite cookies; drop token from localStorage. Update `requireAuth` to read the cookie.
-- [ ] **R4:** Add refresh-token rotation (short-lived access + long-lived rotating refresh, persisted/revocable). Add a `Session` model + logout/revoke + multi-device list.
+- [x] **R1:** Require `JWT_SECRET` at boot (fail fast if unset/default).
+- [x] **R2:** Move JWT to httpOnly, Secure, SameSite cookies; drop token from localStorage. `requireAuth` reads the cookie (Bearer fallback for API clients).
+- [x] **R4:** Refresh-token rotation (15m access + 7d rotating refresh, hashed + revocable `Session` model); login/refresh/logout/me endpoints; reuse-detection revokes session.
+- [ ] **R4 (remainder):** Multi-device session list + "log out other devices" UI.
 - [ ] **R3:** Replace invoice numbering with a DB sequence or dedicated counter row updated inside the transaction.
 - [ ] **R5:** Add rate limiting (per-IP/per-user), security headers/CSP, and CSRF protection for cookie-based mutations.
 - [ ] Password reset + OTP flow (email/SMS provider stubbed via existing `SMS_API_KEY`).

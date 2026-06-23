@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, AuthTokenPayload, hasPermission } from './auth';
+import { verifyToken, AuthTokenPayload, hasPermission, ACCESS_COOKIE } from './auth';
 
 /**
- * Extracts and verifies the bearer token from the Authorization header.
- * Returns the decoded payload, or null if missing/invalid.
+ * Extracts and verifies the access token. Prefers the httpOnly cookie set at
+ * login; falls back to an Authorization: Bearer header for non-browser API
+ * clients. Returns the decoded payload, or null if missing/invalid.
  */
 export function getAuthFromRequest(req: NextRequest): AuthTokenPayload | null {
+  const cookieToken = req.cookies.get(ACCESS_COOKIE)?.value;
+  if (cookieToken) {
+    const payload = verifyToken(cookieToken);
+    if (payload) return payload;
+  }
+
   const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.replace('Bearer ', '');
-  return verifyToken(token);
+  if (authHeader?.startsWith('Bearer ')) {
+    return verifyToken(authHeader.slice('Bearer '.length));
+  }
+
+  return null;
 }
 
 /**

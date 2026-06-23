@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('maxbuy2024');
   const [error, setError] = useState('');
@@ -28,7 +28,7 @@ export default function LoginPage() {
         setError(data.error || 'Invalid credentials');
         return;
       }
-      setAuth(data.user, data.token);
+      setUser(data.user);
       toast.success(`Welcome back, ${data.user.name}!`);
       router.push('/dashboard');
     } catch {

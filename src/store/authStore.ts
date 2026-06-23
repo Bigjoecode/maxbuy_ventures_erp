@@ -10,10 +10,12 @@ interface AuthUser {
   avatar: string;
 }
 
+// Tokens live in httpOnly cookies (set by the server) — never in JS-readable
+// storage. This store only holds non-sensitive user display data, hydrated
+// from /api/auth/me on load.
 interface AuthState {
   user: AuthUser | null;
-  token: string | null;
-  setAuth: (user: AuthUser, token: string) => void;
+  setUser: (user: AuthUser | null) => void;
   logout: () => void;
 }
 
@@ -21,9 +23,8 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
-      setAuth: (user, token) => set({ user, token }),
-      logout: () => set({ user: null, token: null }),
+      setUser: (user) => set({ user }),
+      logout: () => set({ user: null }),
     }),
     { name: 'maxbuy-auth' }
   )

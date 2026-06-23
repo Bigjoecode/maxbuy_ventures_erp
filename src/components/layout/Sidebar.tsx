@@ -74,7 +74,12 @@ export function Sidebar({ badgeCounts = {} }: SidebarProps) {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, closeSidebar } = useUIStore();
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch {
+      /* clear client state regardless of network result */
+    }
     logout();
     router.push('/login');
   }

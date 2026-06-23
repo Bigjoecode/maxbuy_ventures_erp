@@ -1,22 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/store/authStore';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function DashboardGroupLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const token = useAuthStore((s) => s.token);
+  const setUser = useAuthStore((s) => s.setUser);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      router.replace('/login');
-    } else {
-      setChecked(true);
-    }
-  }, [token, router]);
+    let active = true;
+    // Validates the session against the server (httpOnly cookie). apiFetch
+    // handles silent refresh and redirects to /login if there is no session.
+    apiFetch<{ user: any }>('/api/auth/me')
+      .then((data) => {
+        if (active) {
+          setUser(data.user);
+          setChecked(true);
+        }
+      })
+      .catch(() => {
+        /* apiFetch already redirected to /login on auth failure */
+      });
+    return () => {
+      active = false;
+    };
+  }, [setUser]);
 
   if (!checked) {
     return (

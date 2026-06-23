@@ -71,6 +71,22 @@ model Staff {
   sales        Sale[]
   expenses     Expense[]
   activityLogs ActivityLog[]
+  sessions     Session[]
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  staffId    String
+  staff      Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tokenHash  String    // SHA-256 of the refresh-token secret (raw token never stored)
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  @@index([staffId])
 }
 
 model Category {

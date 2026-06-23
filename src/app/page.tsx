@@ -6,11 +6,13 @@ import { useAuthStore } from '@/store/authStore';
 
 export default function HomePage() {
   const router = useRouter();
-  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    router.replace(token ? '/dashboard' : '/login');
-  }, [token, router]);
+    // The dashboard layout re-validates the session against the server cookie;
+    // this is just an initial hint to avoid a needless bounce through /login.
+    router.replace(user ? '/dashboard' : '/login');
+  }, [user, router]);
 
   return (
     <div className="flex h-screen items-center justify-center bg-[var(--bg)]">
