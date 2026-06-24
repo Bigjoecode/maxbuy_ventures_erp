@@ -11,6 +11,7 @@ const staffSchema = z.object({
   password: z.string().min(6),
   phone: z.string().optional().nullable(),
   role: z.enum(['SUPER_ADMIN', 'MANAGER', 'CASHIER', 'STOCK_KEEPER', 'SALES_REP']),
+  branchId: z.string().optional().nullable(),
 });
 
 // GET /api/staff — list staff (admin/manager only)

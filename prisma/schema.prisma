@@ -53,6 +53,26 @@ model Branch {
   products  Product[]
   sales     Sale[]
   expenses  Expense[]
+  transfersOut StockTransfer[] @relation("TransferFrom")
+  transfersIn  StockTransfer[] @relation("TransferTo")
+}
+
+model StockTransfer {
+  id            String   @id @default(cuid())
+  fromBranchId  String
+  fromBranch    Branch   @relation("TransferFrom", fields: [fromBranchId], references: [id])
+  toBranchId    String
+  toBranch      Branch   @relation("TransferTo", fields: [toBranchId], references: [id])
+  sourceProductId String
+  destProductId   String
+  productName   String
+  quantity      Int
+  note          String?
+  createdById   String
+  createdAt     DateTime @default(now())
+
+  @@index([fromBranchId])
+  @@index([toBranchId])
 }
 
 model Staff {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
 import { logActivity } from '@/lib/audit';
+import { branchScope } from '@/lib/branch';
 import { z } from 'zod';
 
 const productSchema = z.object({
@@ -17,6 +18,7 @@ const productSchema = z.object({
   expiryDate: z.string().datetime().optional().nullable(),
   barcode: z.string().optional().nullable(),
   sku: z.string().optional().nullable(),
+  branchId: z.string().optional().nullable(),
 });
 
 // GET /api/products — list all products with optional filters
@@ -32,6 +34,7 @@ export async function GET(req: NextRequest) {
 
   const products = await prisma.product.findMany({
     where: {
+      ...branchScope(auth),
       isActive: deleted ? undefined : true,
       deletedAt: deleted ? { not: null } : null,
       categoryId,
@@ -72,6 +75,8 @@ export async function POST(req: NextRequest) {
       ...data,
       expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
       supplierId: data.supplierId || null,
+      // New products belong to the creator's branch (so they're transferable).
+      branchId: data.branchId ?? auth.branchId ?? null,
     },
   });
 

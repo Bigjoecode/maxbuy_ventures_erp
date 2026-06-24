@@ -19,6 +19,7 @@ import {
   Settings,
   ScrollText,
   Trash2,
+  Building2,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store/authStore';
@@ -59,6 +60,7 @@ const NAV_SECTIONS = [
     label: 'Management',
     items: [
       { href: '/staff', label: 'Staff & Roles', icon: UserCog },
+      { href: '/branches', label: 'Branches', icon: Building2 },
       { href: '/reports', label: 'Reports', icon: BarChart3 },
       { href: '/activity-log', label: 'Activity Log', icon: ScrollText },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: Trash2 },

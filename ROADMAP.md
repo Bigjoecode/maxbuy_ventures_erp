@@ -37,6 +37,7 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 - **2026-06-22:** Staging live on Vercel + Neon (schema pushed + seeded; admin login working).
 - **2026-06-23:** R2 + R4 done — httpOnly cookie auth with rotating refresh tokens and revocable `Session` model. Added `/api/auth/{refresh,logout,me}`, client silent-refresh, server-validated route gating. Full lifecycle smoke-tested (login/me/refresh/rotation/reuse-detection/logout) — all green.
 - **2026-06-23:** **Phase 1 complete.** R3 (atomic invoice numbers, race-fixed + throughput fix), R5 (rate limiting, CSP/security headers, CSRF Origin check), OTP password reset, and multi-device session management. All smoke-tested live: CSRF 403/200, 8 concurrent sales → unique invoices, OTP reset + reuse-block, rate-limit 429, sessions current-flag. Test data cleaned from staging.
+- **2026-06-23:** **Phase 3 complete (data integrity & multi-branch foundation).** Soft-delete + Recycle Bin + restore (fixed destructive customer hard-delete), full audit-log instrumentation + viewer, branch-scoping + Branch management + stock transfers, and a pg_dump backup/restore toolkit with docs. Verified live: soft-delete→trash→restore round-trip, audit logging, branch creation + stock transfer (source 10→7, destination credited), over-transfer rejected. Test data cleaned.
 - **2026-06-23:** **Phase 2 complete (offline-first PWA).** Installable PWA (manifest + icons + install prompt), hand-rolled service worker (static caching + offline fallback), Dexie offline catalog/customer cache, offline POS that queues sales with optimistic stock + idempotent sync engine (sync on reconnect/load/SW), conflict flagging, and local sync notifications. Verified live: idempotent re-POST (`deduped`, no duplicate), PWA assets serve correctly. Also fixed the Phase 1 CSP that was blocking Google Fonts + Font Awesome. Test data cleaned.
 
 ## 3. Phased plan
@@ -70,9 +71,11 @@ Phasing note: you chose **Offline/PWA** as the first focus. Offline depends on a
 - [x] Notifications: local notifications for sync results (when backgrounded) + push-ready SW handlers. **Follow-up:** full server-sent Web Push needs VAPID keys + a subscription store.
 
 ### Phase 3 — Data integrity & multi-branch (1.5 weeks)
-- [ ] **R8:** Soft-delete (`deletedAt`) + recovery on core models; widen `ActivityLog` coverage to all mutations.
-- [ ] **R7:** Branch-scope all queries by `branchId` from the auth payload; add stock-transfer flows between branches.
-- [ ] Backup strategy: scheduled `pg_dump` + encrypted offsite storage (existing `CLOUD_STORAGE_*` vars).
+- [x] **R8:** Soft-delete (`deletedAt`) + recovery on Product/Customer/Supplier/Staff (customers were previously HARD-deleted); Recycle Bin UI + `/api/admin/{trash,restore}`. Central `logActivity()` instrumenting all mutations; Activity Log viewer + `/api/admin/activity`.
+- [x] **R7:** Branch-scoping helper (`branchScope`) applied to product/sales/expense reads (super-admin sees all — backward compatible); Branch CRUD API + management UI; `StockTransfer` model + endpoint + UI (verified: transfer decrements source, creates/credits destination). New products inherit the creator's branch.
+- [x] Backup strategy: `scripts/backup.sh` (pg_dump + gzip + optional GPG encryption + optional S3) + `restore.sh` + `docs/BACKUP.md` (cron + recovery drill).
+
+> Multi-branch note: full per-branch SKUs/inventory (same product, separate stock per branch with branch-unique SKUs) needs a `BranchStock` redesign — intentionally deferred ("future-ready" per brief). Current transfer clones the product into the destination branch by name.
 
 ### Phase 4 — Packaging (1.5 weeks)
 - [ ] **Android:** Capacitor wrap → APK + AAB, Play Store config.

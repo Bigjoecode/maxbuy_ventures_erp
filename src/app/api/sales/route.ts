@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
 import { nextInvoiceNumber } from '@/lib/invoice';
+import { branchScope } from '@/lib/branch';
 import { z } from 'zod';
 
 const saleItemSchema = z.object({
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   const sales = await prisma.sale.findMany({
-    where: { createdAt: { gte: from } },
+    where: { ...branchScope(auth), createdAt: { gte: from } },
     include: {
       customer: true,
       staff: { select: { name: true } },

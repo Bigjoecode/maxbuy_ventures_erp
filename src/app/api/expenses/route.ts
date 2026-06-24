@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
 import { logActivity } from '@/lib/audit';
+import { branchScope } from '@/lib/branch';
 import { z } from 'zod';
 
 const expenseSchema = z.object({
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   const expenses = await prisma.expense.findMany({
-    where: from ? { date: { gte: from } } : undefined,
+    where: { ...branchScope(auth), ...(from ? { date: { gte: from } } : {}) },
     include: { recordedBy: { select: { name: true } } },
     orderBy: { date: 'desc' },
   });
