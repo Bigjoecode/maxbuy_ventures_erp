@@ -2,73 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  LayoutDashboard,
-  ShoppingCart,
-  Boxes,
-  Truck,
-  CalendarX,
-  Receipt,
-  Wallet,
-  HandCoins,
-  Users,
-  Star,
-  UserCog,
-  BarChart3,
-  Bot,
-  Settings,
-  ScrollText,
-  Trash2,
-  Building2,
-  LogOut,
-} from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store/authStore';
+import { NAV_SECTIONS, canAccess } from '@/lib/nav';
 import { cn } from '@/lib/utils';
-
-const NAV_SECTIONS = [
-  {
-    label: 'Overview',
-    items: [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
-    ],
-  },
-  {
-    label: 'Inventory',
-    items: [
-      { href: '/inventory', label: 'Products & Stock', icon: Boxes },
-      { href: '/suppliers', label: 'Suppliers', icon: Truck },
-      { href: '/expiry', label: 'Expiry Tracker', icon: CalendarX, badge: 'expiry' },
-    ],
-  },
-  {
-    label: 'Finance',
-    items: [
-      { href: '/sales', label: 'Sales & Invoices', icon: Receipt },
-      { href: '/expenses', label: 'Expenses', icon: Wallet },
-      { href: '/debts', label: 'Debts & Credits', icon: HandCoins, badge: 'debts' },
-    ],
-  },
-  {
-    label: 'Customers',
-    items: [
-      { href: '/customers', label: 'Customers', icon: Users },
-      { href: '/loyalty', label: 'Loyalty Program', icon: Star },
-    ],
-  },
-  {
-    label: 'Management',
-    items: [
-      { href: '/staff', label: 'Staff & Roles', icon: UserCog },
-      { href: '/branches', label: 'Branches', icon: Building2 },
-      { href: '/reports', label: 'Reports', icon: BarChart3 },
-      { href: '/activity-log', label: 'Activity Log', icon: ScrollText },
-      { href: '/recycle-bin', label: 'Recycle Bin', icon: Trash2 },
-      { href: '/ai-assistant', label: 'AI Assistant', icon: Bot },
-      { href: '/settings', label: 'Settings', icon: Settings },
-    ],
-  },
-];
 
 interface SidebarProps {
   badgeCounts?: Record<string, number>;
@@ -79,6 +16,12 @@ export function Sidebar({ badgeCounts = {} }: SidebarProps) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const { sidebarOpen, closeSidebar } = useUIStore();
+
+  // Only show sections/items the current role is allowed to access.
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => canAccess(user?.role, item.permission)),
+  })).filter((section) => section.items.length > 0);
 
   async function handleLogout() {
     try {
@@ -103,7 +46,15 @@ export function Sidebar({ badgeCounts = {} }: SidebarProps) {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
-        <div className="border-b border-white/[0.06] px-5 pt-6 pb-4">
+        <div className="relative border-b border-white/[0.06] px-5 pt-6 pb-4">
+          {/* Close button — mobile only */}
+          <button
+            onClick={closeSidebar}
+            aria-label="Close menu"
+            className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white md:hidden"
+          >
+            <X size={18} />
+          </button>
           <div className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--green-mid)] text-lg">
             🛒
           </div>
@@ -114,7 +65,7 @@ export function Sidebar({ badgeCounts = {} }: SidebarProps) {
         </div>
 
         <nav className="flex-1 py-3">
-          {NAV_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.label}>
               <div className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-white/20">
                 {section.label}

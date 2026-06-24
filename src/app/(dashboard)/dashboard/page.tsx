@@ -13,6 +13,8 @@ import { StatCard } from '@/components/ui/StatCard';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { apiFetch } from '@/lib/apiClient';
 import { formatCurrency } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+import { canAccess } from '@/lib/nav';
 
 interface DashboardData {
   stats: {
@@ -34,16 +36,18 @@ interface DashboardData {
 const CATEGORY_COLORS = ['#1db87a', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#6b7e74'];
 
 const QUICK_ACTIONS = [
-  { label: 'New Sale', icon: ShoppingCart, href: '/pos' },
-  { label: 'Add Product', icon: PackagePlus, href: '/inventory' },
-  { label: 'Add Expense', icon: MinusCircle, href: '/expenses' },
-  { label: 'New Customer', icon: UserPlus, href: '/customers' },
-  { label: 'Export Report', icon: FileDown, href: '/reports' },
-  { label: 'AI Insights', icon: Bot, href: '/ai-assistant' },
+  { label: 'New Sale', icon: ShoppingCart, href: '/pos', permission: 'pos' },
+  { label: 'Add Product', icon: PackagePlus, href: '/inventory', permission: 'inventory' },
+  { label: 'Add Expense', icon: MinusCircle, href: '/expenses', permission: 'expenses' },
+  { label: 'New Customer', icon: UserPlus, href: '/customers', permission: 'customers' },
+  { label: 'Export Report', icon: FileDown, href: '/reports', permission: 'reports' },
+  { label: 'AI Insights', icon: Bot, href: '/ai-assistant', permission: 'reports' },
 ];
 
 export default function DashboardPage() {
   const router = useRouter();
+  const role = useAuthStore((s) => s.user?.role);
+  const quickActions = QUICK_ACTIONS.filter((a) => canAccess(role, a.permission));
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -211,7 +215,7 @@ export default function DashboardPage() {
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-          {QUICK_ACTIONS.map((action) => {
+          {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <button

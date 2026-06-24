@@ -5,7 +5,7 @@ import { Bot, Send, Lightbulb, Zap } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { apiFetch } from '@/lib/apiClient';
-import { formatCurrency } from '@/lib/utils';
+import { generateInsight, InsightContext } from '@/lib/insights';
 
 interface Message { role: 'user' | 'assistant'; content: string; }
 
@@ -20,15 +20,15 @@ const QUICK_PROMPTS = [
 
 export default function AiAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "👋 Welcome! I'm **Maxbuy AI**, your intelligent business assistant.\n\nI can help you with:\n• 📦 Inventory analysis and restock recommendations\n• 📈 Sales insights and trend analysis\n• 💰 Debt management and customer advice\n• 🎯 Business growth strategies\n\nWhat would you like to know about Maxbuy Ventures?" }
+    { role: 'assistant', content: "👋 Hi, I'm Maxbuy Insights — I read your live business data to answer questions.\n\nTry asking about:\n• 📦 What's low on stock / what to restock\n• 📊 Top categories by inventory value\n• 💰 Customer debt and how to reduce it\n• 📈 Profit margins and pricing\n• 📋 An overall business summary\n\nPick a prompt on the right or type your question below." }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [context, setContext] = useState<any>(null);
+  const [context, setContext] = useState<InsightContext>({ products: [], dashboard: null });
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Pre-load business context to inject into AI calls
+    // Pre-load live business data — insights are computed locally from it.
     Promise.all([
       apiFetch<{ products: any[] }>('/api/products').catch(() => ({ products: [] })),
       apiFetch<any>('/api/dashboard').catch(() => null),
@@ -41,7 +41,7 @@ export default function AiAssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  async function sendMessage(text?: string) {
+  function sendMessage(text?: string) {
     const userText = text || input.trim();
     if (!userText || loading) return;
     setInput('');
@@ -50,43 +50,12 @@ export default function AiAssistantPage() {
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
-    try {
-      // Build a rich system prompt from live business data
-      const lowStock = context?.products?.filter((p: any) => p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert) || [];
-      const outOfStock = context?.products?.filter((p: any) => p.stockQuantity === 0) || [];
-      const stats = context?.dashboard?.stats;
-
-      const systemPrompt = `You are Maxbuy AI, the intelligent business assistant for Maxbuy Ventures — a growing grocery, baby feeds, and wholesale business based in Nigeria.
-
-Current business snapshot:
-- Today's revenue: ${stats ? formatCurrency(stats.todayRevenue) : 'unknown'}
-- Today's sales count: ${stats?.todaySalesCount ?? 'unknown'}
-- Total stock value: ${stats ? formatCurrency(stats.totalStockValue) : 'unknown'}  
-- Total products: ${stats?.totalProducts ?? 'unknown'}
-- Outstanding debts: ${stats ? formatCurrency(stats.outstandingDebts) : 'unknown'} from ${stats?.debtorsCount ?? 0} customers
-- Low stock items (${lowStock.length}): ${lowStock.map((p: any) => p.name).slice(0, 5).join(', ') || 'none'}
-- Out of stock items (${outOfStock.length}): ${outOfStock.map((p: any) => p.name).slice(0, 5).join(', ') || 'none'}
-
-You are a knowledgeable business advisor with expertise in Nigerian retail and wholesale operations. Be concise, actionable, and use Nigerian context (Naira currency, local market conditions). Format responses clearly with bullet points when listing multiple items.`;
-
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
-          systemPrompt,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'AI request failed');
-
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.content }]);
-    } catch (err: any) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Sorry, I encountered an error: ${err.message}. Please check that the ANTHROPIC_API_KEY is configured in your .env file.` }]);
-    } finally {
+    // Compute the answer locally (no external API). Small delay for a natural feel.
+    const reply = generateInsight(userText, context);
+    setTimeout(() => {
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
       setLoading(false);
-    }
+    }, 300);
   }
 
   return (
@@ -94,8 +63,8 @@ You are a knowledgeable business advisor with expertise in Nigerian retail and w
       <Topbar title="AI Assistant" />
       <div className="flex-1 p-4 md:p-6">
         <div className="mb-5">
-          <h2 className="font-display text-[22px] font-extrabold text-[var(--text)]">AI Business Assistant</h2>
-          <p className="text-[13px] text-[var(--text-muted)]">Powered by Claude — intelligent insights for Maxbuy Ventures</p>
+          <h2 className="font-display text-[22px] font-extrabold text-[var(--text)]">Business Insights</h2>
+          <p className="text-[13px] text-[var(--text-muted)]">Smart insights computed locally from your live data — no setup or API key needed</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
@@ -159,9 +128,9 @@ You are a knowledgeable business advisor with expertise in Nigerian retail and w
             </Card>
 
             <Card>
-              <CardTitle icon={Zap}>Setup Note</CardTitle>
+              <CardTitle icon={Zap}>How it works</CardTitle>
               <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
-                Add <code className="rounded bg-[var(--bg)] px-1 text-[11px]">ANTHROPIC_API_KEY</code> to your <code className="rounded bg-[var(--bg)] px-1 text-[11px]">.env</code> file to enable live AI responses. The AI uses your real business data as context.
+                These insights are generated on your device from your real inventory, sales and debt data — no external AI service or API key, and it works offline.
               </p>
             </Card>
           </div>
