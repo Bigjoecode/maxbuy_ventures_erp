@@ -4,9 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.maxbuy.erp",
-      "sha256_cert_fingerprints": [
-        "REPLACE_WITH_YOUR_APP_SIGNING_SHA256_FINGERPRINT"
-      ]
+      "sha256_cert_fingerprints": ["5C:7F:C1:26:1B:0F:CB:DA:35:B1:B0:04:E7:C6:8D:30:3A:F1:3A:35:1C:F5:0C:EB:A1:C1:F1:57:15:2E:56:ED"]
     }
   }
 ]
