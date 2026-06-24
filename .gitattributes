@@ -1,0 +1,17 @@
+# Normalize line endings to LF in the repo so shell scripts work inside Linux
+# containers regardless of the OS they were authored on.
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+
+# Binary assets — never normalize.
+*.png binary
+*.jpg binary
+*.ico binary
+*.webp binary
