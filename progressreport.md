@@ -37,7 +37,6 @@ Also fixed: the Phase 1 CSP was inadvertently blocking Google Fonts + Font Aweso
 
 ## Known follow-ups (tracked in ROADMAP.md)
 - **SMS provider** — OTP codes currently log server-side; needs Termii/Twilio wiring (~15 lines).
-- **jspdf upgrade (R11)** — critical advisory in PDF generation; breaking upgrade + receipt re-test.
 - **Web Push** — server-sent push needs VAPID keys + subscription store (SW handlers already in place).
 - Hardening niceties: nonce CSP, Redis rate limiting (only at multi-server scale), TOTP 2FA.
 
