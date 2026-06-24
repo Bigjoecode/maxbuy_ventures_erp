@@ -37,6 +37,7 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 - **2026-06-22:** Staging live on Vercel + Neon (schema pushed + seeded; admin login working).
 - **2026-06-23:** R2 + R4 done — httpOnly cookie auth with rotating refresh tokens and revocable `Session` model. Added `/api/auth/{refresh,logout,me}`, client silent-refresh, server-validated route gating. Full lifecycle smoke-tested (login/me/refresh/rotation/reuse-detection/logout) — all green.
 - **2026-06-23:** **Phase 1 complete.** R3 (atomic invoice numbers, race-fixed + throughput fix), R5 (rate limiting, CSP/security headers, CSRF Origin check), OTP password reset, and multi-device session management. All smoke-tested live: CSRF 403/200, 8 concurrent sales → unique invoices, OTP reset + reuse-block, rate-limit 429, sessions current-flag. Test data cleaned from staging.
+- **2026-06-24:** **Phase 4 complete (packaging setup).** Capacitor (Android) + Tauri (Windows desktop) configured to wrap the deployed PWA, npm scripts added, and `docs/PACKAGING.md` covers PWABuilder + Capacitor + Tauri build paths. Web build verified; native binaries require toolchains on a build machine (documented).
 - **2026-06-23:** **Phase 3 complete (data integrity & multi-branch foundation).** Soft-delete + Recycle Bin + restore (fixed destructive customer hard-delete), full audit-log instrumentation + viewer, branch-scoping + Branch management + stock transfers, and a pg_dump backup/restore toolkit with docs. Verified live: soft-delete→trash→restore round-trip, audit logging, branch creation + stock transfer (source 10→7, destination credited), over-transfer rejected. Test data cleaned.
 - **2026-06-23:** **Phase 2 complete (offline-first PWA).** Installable PWA (manifest + icons + install prompt), hand-rolled service worker (static caching + offline fallback), Dexie offline catalog/customer cache, offline POS that queues sales with optimistic stock + idempotent sync engine (sync on reconnect/load/SW), conflict flagging, and local sync notifications. Verified live: idempotent re-POST (`deduped`, no duplicate), PWA assets serve correctly. Also fixed the Phase 1 CSP that was blocking Google Fonts + Font Awesome. Test data cleaned.
 
@@ -78,8 +79,11 @@ Phasing note: you chose **Offline/PWA** as the first focus. Offline depends on a
 > Multi-branch note: full per-branch SKUs/inventory (same product, separate stock per branch with branch-unique SKUs) needs a `BranchStock` redesign — intentionally deferred ("future-ready" per brief). Current transfer clones the product into the destination branch by name.
 
 ### Phase 4 — Packaging (1.5 weeks)
-- [ ] **Android:** Capacitor wrap → APK + AAB, Play Store config.
-- [ ] **Desktop:** Tauri (recommended over Electron — smaller, more secure) → Windows installer + auto-update channel.
+- [x] **Android:** Capacitor configured (`capacitor.config.ts`, hosted-PWA shell) + npm scripts. Also documented the **PWABuilder** route (no local toolchain → APK/AAB from the live PWA). Producing the binary needs Android Studio + JDK on a build machine.
+- [x] **Desktop:** Tauri configured (`src-tauri/`: conf + Cargo + main.rs, loads the deployed URL) + npm scripts. Building the .msi/.exe needs Rust + MSVC build tools.
+- [x] Full build guide in `docs/PACKAGING.md` (PWABuilder + Capacitor + Tauri; signing, icons, versioning, auto-update notes).
+
+> Native binaries can't be compiled in this dev environment (no Android SDK / Rust toolchain). All config is in place and the web build is verified; run the documented commands on a build machine to produce APK/AAB and the Windows installer. PWABuilder needs no toolchain at all.
 
 ### Phase 5 — DevOps & deployment (1 week)
 - [ ] **R10:** Dockerfile + docker-compose (app + PostgreSQL + Nginx).

@@ -35,3 +35,12 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Native packaging (generated build artifacts)
+android/
+ios/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+*.apk
+*.aab
