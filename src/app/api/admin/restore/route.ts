@@ -5,7 +5,7 @@ import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const schema = z.object({
-  resource: z.enum(['product', 'customer', 'supplier']),
+  resource: z.enum(['product', 'customer', 'supplier', 'staff']),
   id: z.string().min(1),
 });
 
@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
       await prisma.product.update({ where: { id }, data: { deletedAt: null, isActive: true } });
     } else if (resource === 'customer') {
       await prisma.customer.update({ where: { id }, data: { deletedAt: null } });
+    } else if (resource === 'staff') {
+      await prisma.staff.update({ where: { id }, data: { deletedAt: null, isActive: true } });
     } else {
       await prisma.supplier.update({ where: { id }, data: { deletedAt: null } });
     }

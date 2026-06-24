@@ -12,16 +12,18 @@ interface Trashed {
   name: string;
   phone?: string | null;
   sku?: string | null;
+  username?: string | null;
   deletedAt: string;
 }
 
-type Resource = 'product' | 'customer' | 'supplier';
+type Resource = 'product' | 'customer' | 'supplier' | 'staff';
 
 export default function RecycleBinPage() {
-  const [data, setData] = useState<{ products: Trashed[]; customers: Trashed[]; suppliers: Trashed[] }>({
+  const [data, setData] = useState<{ products: Trashed[]; customers: Trashed[]; suppliers: Trashed[]; staff: Trashed[] }>({
     products: [],
     customers: [],
     suppliers: [],
+    staff: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +52,12 @@ export default function RecycleBinPage() {
     }
   }
 
-  const empty = !loading && data.products.length === 0 && data.customers.length === 0 && data.suppliers.length === 0;
+  const empty =
+    !loading &&
+    data.products.length === 0 &&
+    data.customers.length === 0 &&
+    data.suppliers.length === 0 &&
+    data.staff.length === 0;
 
   const Section = ({ title, items, resource }: { title: string; items: Trashed[]; resource: Resource }) => (
     <Card>
@@ -66,7 +73,7 @@ export default function RecycleBinPage() {
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-medium text-[var(--text)]">{it.name}</p>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  {it.phone || it.sku || ''} · deleted {new Date(it.deletedAt).toLocaleString()}
+                  {it.phone || it.sku || it.username || ''} · deleted {new Date(it.deletedAt).toLocaleString()}
                 </p>
               </div>
               <button
@@ -98,10 +105,11 @@ export default function RecycleBinPage() {
             <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">🎉 The recycle bin is empty.</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Section title="Products" items={data.products} resource="product" />
             <Section title="Customers" items={data.customers} resource="customer" />
             <Section title="Suppliers" items={data.suppliers} resource="supplier" />
+            <Section title="Staff" items={data.staff} resource="staff" />
           </div>
         )}
       </div>

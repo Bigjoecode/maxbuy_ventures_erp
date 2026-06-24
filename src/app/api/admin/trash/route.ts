@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const [products, customers, suppliers] = await Promise.all([
+  const [products, customers, suppliers, staff] = await Promise.all([
     prisma.product.findMany({
       where: { deletedAt: { not: null } },
       select: { id: true, name: true, sku: true, deletedAt: true },
@@ -30,7 +30,12 @@ export async function GET(req: NextRequest) {
       select: { id: true, name: true, phone: true, deletedAt: true },
       orderBy: { deletedAt: 'desc' },
     }),
+    prisma.staff.findMany({
+      where: { deletedAt: { not: null } },
+      select: { id: true, name: true, username: true, deletedAt: true },
+      orderBy: { deletedAt: 'desc' },
+    }),
   ]);
 
-  return NextResponse.json({ products, customers, suppliers });
+  return NextResponse.json({ products, customers, suppliers, staff });
 }
