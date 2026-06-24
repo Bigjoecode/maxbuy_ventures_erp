@@ -17,7 +17,8 @@ A production-ready, full-stack ERP system built for **Maxbuy Ventures**, a groce
 | **Auth** | JWT (jsonwebtoken) + bcrypt |
 | **Validation** | Zod |
 | **AI** | Anthropic Claude API (claude-sonnet-4-6) |
-| **PDF/Receipts** | jsPDF + jspdf-autotable |
+| **Receipts** | Browser print (print-to-PDF) + WhatsApp share |
+| **Offline** | PWA service worker + IndexedDB (Dexie) |
 | **Notifications** | react-hot-toast |
 
 ---

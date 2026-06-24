@@ -30,6 +30,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Unit tests
+        run: npm run test
+
       - name: Build
         # A dummy JWT_SECRET satisfies runtime guards if any code path is
         # evaluated at build time; no database connection is needed to build.
