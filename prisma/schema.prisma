@@ -190,6 +190,7 @@ model Customer {
 model Sale {
   id            String        @id @default(cuid())
   invoiceNumber String        @unique
+  clientRef     String?       @unique // idempotency key for offline-queued sales
   customerId    String?
   customer      Customer?     @relation(fields: [customerId], references: [id])
   staffId       String

@@ -16,6 +16,7 @@ const saleSchema = z.object({
   paymentMethod: z.enum(['CASH', 'TRANSFER', 'POS', 'CREDIT']).default('CASH'),
   isCreditSale: z.boolean().default(false), // if true, also creates a Debt record
   dueDate: z.string().datetime().optional().nullable(),
+  clientRef: z.string().min(8).max(64).optional(), // idempotency key for offline sync
 });
 
 // GET /api/sales — list sales (supports ?period=today|week|month)
@@ -63,7 +64,16 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
   }
-  const { customerId, items, discountPct, paymentMethod, isCreditSale, dueDate } = parsed.data;
+  const { customerId, items, discountPct, paymentMethod, isCreditSale, dueDate, clientRef } = parsed.data;
+
+  // Idempotency: if this offline-queued sale was already processed (e.g. a retry
+  // after a flaky network), return the existing sale instead of duplicating it.
+  if (clientRef) {
+    const existing = await prisma.sale.findUnique({ where: { clientRef }, include: { items: true } });
+    if (existing) {
+      return NextResponse.json({ sale: existing, deduped: true }, { status: 200 });
+    }
+  }
 
   // Reserve the invoice number up-front (atomic, outside the transaction) so the
   // counter's row lock is not held for the whole sale — keeps checkout fast.
@@ -95,6 +105,7 @@ export async function POST(req: NextRequest) {
       const sale = await tx.sale.create({
         data: {
           invoiceNumber,
+          clientRef: clientRef || null,
           customerId: customerId || null,
           staffId: auth.staffId,
           subtotal,
@@ -157,6 +168,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sale: result }, { status: 201 });
   } catch (err: any) {
+    // Concurrent retry with the same idempotency key: the unique constraint
+    // fired — return the sale that won the race instead of an error.
+    if (err?.code === 'P2002' && clientRef) {
+      const existing = await prisma.sale.findUnique({ where: { clientRef }, include: { items: true } });
+      if (existing) return NextResponse.json({ sale: existing, deduped: true }, { status: 200 });
+    }
     return NextResponse.json({ error: err.message || 'Failed to process sale' }, { status: 400 });
   }
 }

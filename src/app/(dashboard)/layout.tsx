@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { OfflineBanner } from '@/components/pwa/OfflineBanner';
 import { useAuthStore } from '@/store/authStore';
 import { apiFetch } from '@/lib/apiClient';
 
@@ -39,7 +40,10 @@ export default function DashboardGroupLayout({ children }: { children: React.Rea
   return (
     <div className="flex min-h-screen bg-[var(--bg)]">
       <Sidebar badgeCounts={{ expiry: 3, debts: 5 }} />
-      <div className="flex flex-1 flex-col md:ml-[240px]">{children}</div>
+      <div className="flex flex-1 flex-col md:ml-[240px]">
+        <OfflineBanner />
+        {children}
+      </div>
     </div>
   );
 }

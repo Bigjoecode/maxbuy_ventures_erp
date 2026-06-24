@@ -37,6 +37,7 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 - **2026-06-22:** Staging live on Vercel + Neon (schema pushed + seeded; admin login working).
 - **2026-06-23:** R2 + R4 done — httpOnly cookie auth with rotating refresh tokens and revocable `Session` model. Added `/api/auth/{refresh,logout,me}`, client silent-refresh, server-validated route gating. Full lifecycle smoke-tested (login/me/refresh/rotation/reuse-detection/logout) — all green.
 - **2026-06-23:** **Phase 1 complete.** R3 (atomic invoice numbers, race-fixed + throughput fix), R5 (rate limiting, CSP/security headers, CSRF Origin check), OTP password reset, and multi-device session management. All smoke-tested live: CSRF 403/200, 8 concurrent sales → unique invoices, OTP reset + reuse-block, rate-limit 429, sessions current-flag. Test data cleaned from staging.
+- **2026-06-23:** **Phase 2 complete (offline-first PWA).** Installable PWA (manifest + icons + install prompt), hand-rolled service worker (static caching + offline fallback), Dexie offline catalog/customer cache, offline POS that queues sales with optimistic stock + idempotent sync engine (sync on reconnect/load/SW), conflict flagging, and local sync notifications. Verified live: idempotent re-POST (`deduped`, no duplicate), PWA assets serve correctly. Also fixed the Phase 1 CSP that was blocking Google Fonts + Font Awesome. Test data cleaned.
 
 ## 3. Phased plan
 
@@ -60,13 +61,13 @@ Phasing note: you chose **Offline/PWA** as the first focus. Offline depends on a
 **Phase 1 is complete.** Remaining hardening that can come later: nonce-based CSP, distributed (Redis) rate limiting for multi-instance hosting, TOTP 2FA, and R11 (jspdf upgrade).
 
 ### Phase 2 — Offline-first PWA (2.5 weeks) — *your priority*
-- [ ] Web app manifest + icons + "Add to Home Screen" + install prompt.
-- [ ] Service worker (next-pwa or Workbox) — app shell + static asset caching.
-- [ ] IndexedDB layer with **Dexie.js**: cache product catalog, customers, and pending sales.
-- [ ] **Offline POS:** queue sales locally when offline; show offline indicator.
-- [ ] **Background Sync:** flush queued sales to `/api/sales` when connectivity returns.
-- [ ] **Conflict resolution:** server-authoritative stock; reject/flag oversells on sync; surface conflicts to the cashier. (Requires client-generated idempotency keys so re-sync can't double-post — ties back to R3.)
-- [ ] Push notifications (low-stock, sync results).
+- [x] Web app manifest + generated icons + install prompt + Apple PWA meta.
+- [x] Service worker (hand-rolled): static stale-while-revalidate + network-first navigations with `/offline` fallback.
+- [x] IndexedDB layer with **Dexie.js**: caches product catalog + customers; queues pending sales.
+- [x] **Offline POS:** queues sales locally with optimistic stock decrement; global offline/sync indicator banner.
+- [x] **Background Sync:** flushes queued sales on reconnect / load / SW sync event; deduplicated single in-flight sync.
+- [x] **Conflict resolution:** server-authoritative; oversells flagged as `conflict` and surfaced; client `clientRef` idempotency key makes re-sync safe (verified: duplicate POST → `deduped`, no double-post).
+- [x] Notifications: local notifications for sync results (when backgrounded) + push-ready SW handlers. **Follow-up:** full server-sent Web Push needs VAPID keys + a subscription store.
 
 ### Phase 3 — Data integrity & multi-branch (1.5 weeks)
 - [ ] **R8:** Soft-delete (`deletedAt`) + recovery on core models; widen `ActivityLog` coverage to all mutations.

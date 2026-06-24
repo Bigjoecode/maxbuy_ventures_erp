@@ -10,6 +10,9 @@ import { useCartStore } from '@/store/cartStore';
 import { formatCurrency } from '@/lib/utils';
 import { Product, Customer } from '@/types';
 import { ReceiptModal } from '@/components/pos/ReceiptModal';
+import { cacheProducts, getCachedProducts, cacheCustomers, getCachedCustomers, adjustCachedStock } from '@/lib/offline/cache';
+import { enqueueSale } from '@/lib/offline/queue';
+import { ensureNotificationPermission } from '@/lib/offline/pushNotify';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Groceries: '🌾',
@@ -40,8 +43,12 @@ export default function PosPage() {
     try {
       const res = await apiFetch<{ products: Product[] }>('/api/products');
       setProducts(res.products);
-    } catch (err: any) {
-      toast.error(err.message);
+      cacheProducts(res.products); // keep the offline catalog fresh
+    } catch {
+      // Offline (or server unreachable): fall back to the cached catalog.
+      const cached = await getCachedProducts();
+      setProducts(cached);
+      if (cached.length === 0) toast.error('No products available offline yet. Connect once to cache them.');
     } finally {
       setLoading(false);
     }
@@ -51,8 +58,9 @@ export default function PosPage() {
     try {
       const res = await apiFetch<{ customers: Customer[] }>('/api/customers');
       setCustomers(res.customers);
+      cacheCustomers(res.customers);
     } catch {
-      // non-blocking — walk-in customers are still supported
+      setCustomers(await getCachedCustomers()); // walk-in is still supported
     }
   }
 
@@ -87,33 +95,66 @@ export default function PosPage() {
       toast.error('Cart is empty!');
       return;
     }
+
+    const clientRef = crypto.randomUUID();
+    const customer = customers.find((c) => c.id === cart.customerId);
+    const payload = {
+      customerId: cart.customerId || null,
+      items: cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      discountPct: cart.discountPct,
+      paymentMethod: cart.paymentMethod,
+      clientRef,
+    };
+    const baseReceipt = {
+      customerName: customer?.name || 'Walk-in Customer',
+      items: cart.items,
+      subtotal: cart.subtotal(),
+      discountPct: cart.discountPct,
+      total: cart.total(),
+      paymentMethod: cart.paymentMethod,
+    };
+
     setCheckingOut(true);
     try {
-      const res = await apiFetch<{ sale: any }>('/api/sales', {
-        method: 'POST',
-        body: JSON.stringify({
-          customerId: cart.customerId || null,
-          items: cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-          discountPct: cart.discountPct,
-          paymentMethod: cart.paymentMethod,
-        }),
-      });
+      // Try online first (unless the browser already knows it's offline).
+      if (navigator.onLine) {
+        let res: Response | null = null;
+        try {
+          res = await fetch('/api/sales', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch {
+          res = null; // network dropped → fall through to offline queue
+        }
 
-      const customer = customers.find((c) => c.id === cart.customerId);
-      setReceipt({
-        invoiceNumber: res.sale.invoiceNumber,
-        customerName: customer?.name || 'Walk-in Customer',
-        items: cart.items,
-        subtotal: cart.subtotal(),
-        discountPct: cart.discountPct,
-        total: cart.total(),
-        paymentMethod: cart.paymentMethod,
-      });
+        if (res) {
+          if (res.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) {
+            setReceipt({ ...baseReceipt, invoiceNumber: data.sale.invoiceNumber });
+            toast.success(`Sale completed! ${formatCurrency(cart.total())}`);
+            loadProducts();
+            return;
+          }
+          // Business rejection (e.g. insufficient stock) — do NOT queue offline.
+          toast.error(data.error || 'Sale could not be completed');
+          return;
+        }
+      }
 
-      toast.success(`Sale completed! ${formatCurrency(cart.total())}`);
-      loadProducts(); // refresh stock levels
-    } catch (err: any) {
-      toast.error(err.message);
+      // OFFLINE: queue the sale, optimistically decrement the cached stock.
+      ensureNotificationPermission(); // gesture-tied: enables "synced" notifications later
+      await enqueueSale({ clientRef, payload, display: baseReceipt, status: 'pending', createdAt: Date.now() });
+      await adjustCachedStock(payload.items);
+      setProducts(await getCachedProducts());
+      setReceipt({ ...baseReceipt, invoiceNumber: 'Pending sync (offline)' });
+      toast.success('Saved offline — will sync automatically when back online');
     } finally {
       setCheckingOut(false);
     }
