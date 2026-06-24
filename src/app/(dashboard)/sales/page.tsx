@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Receipt, TrendingUp, ShoppingCart, RotateCcw, Eye } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -15,16 +15,16 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('today');
 
-  useEffect(() => { load(); }, [period]);
-
-  async function load() {
+  const load = useCallback(async (currentPeriod: string) => {
     setLoading(true);
     try {
-      const res = await apiFetch<{ sales: any[] }>(`/api/sales?period=${period}`);
+      const res = await apiFetch<{ sales: any[] }>(`/api/sales?period=${currentPeriod}`);
       setSales(res.sales);
     } catch (err: any) { toast.error(err.message); }
     finally { setLoading(false); }
-  }
+  }, []);
+
+  useEffect(() => { void load(period); }, [period, load]);
 
   const totalRevenue = sales.reduce((s, x) => s + x.totalAmount, 0);
   const grossProfit = sales.reduce((s, x) => {

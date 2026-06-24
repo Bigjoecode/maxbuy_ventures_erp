@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Undo2, Trash2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -27,7 +27,8 @@ export default function RecycleBinPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await apiFetch<typeof data>('/api/admin/trash');
       setData(res);
@@ -36,17 +37,17 @@ export default function RecycleBinPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   async function restore(resource: Resource, id: string) {
     try {
       await apiFetch('/api/admin/restore', { method: 'POST', body: JSON.stringify({ resource, id }) });
       toast.success('Restored');
-      load();
+      await load();
     } catch (err: any) {
       toast.error(err.message || 'Restore failed');
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Wallet, CalendarDays, Sun, TrendingUp, Plus, Trash2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -21,16 +21,16 @@ export default function ExpensesPage() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { load(); }, [period]);
-
-  async function load() {
+  const load = useCallback(async (currentPeriod: string) => {
     setLoading(true);
     try {
-      const res = await apiFetch<{ expenses: any[] }>(`/api/expenses?period=${period}`);
+      const res = await apiFetch<{ expenses: any[] }>(`/api/expenses?period=${currentPeriod}`);
       setExpenses(res.expenses);
     } catch (err: any) { toast.error(err.message); }
     finally { setLoading(false); }
-  }
+  }, []);
+
+  useEffect(() => { void load(period); }, [period, load]);
 
   async function handleSave() {
     if (!form.amount) { toast.error('Amount is required'); return; }
@@ -43,7 +43,7 @@ export default function ExpensesPage() {
       toast.success('Expense recorded!');
       setModalOpen(false);
       setForm(EMPTY);
-      load();
+      await load(period);
     } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
   }
