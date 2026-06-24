@@ -8,8 +8,8 @@ import { useAuthStore } from '@/store/authStore';
 export default function LoginPage() {
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('maxbuy2024');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -81,9 +81,6 @@ export default function LoginPage() {
           </a>
         </p>
 
-        <p className="mt-4 text-center text-[11px] text-gray-400">
-          Demo: admin / maxbuy2024 &nbsp;|&nbsp; Staff: amara / staff123
-        </p>
       </div>
     </div>
   );

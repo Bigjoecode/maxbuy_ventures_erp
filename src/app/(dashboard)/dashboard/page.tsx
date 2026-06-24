@@ -6,7 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { Wallet, ShoppingCart, Boxes, AlertTriangle, Plus, PackagePlus, MinusCircle, UserPlus, FileDown, Bot } from 'lucide-react';
+import { Wallet, ShoppingCart, Boxes, AlertTriangle, Plus, PackagePlus, MinusCircle, UserPlus, FileDown, Bot, HandCoins, Lightbulb } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
@@ -27,6 +27,7 @@ interface DashboardData {
     revenueChangePct: number;
   };
   weeklySales: Record<string, number>;
+  categoryBreakdown: { name: string; value: number }[];
   alerts: {
     lowStock: { id: string; name: string; stockQuantity: number }[];
     outOfStock: { id: string; name: string }[];
@@ -70,15 +71,8 @@ export default function DashboardPage() {
     ? Object.entries(data.weeklySales).map(([day, revenue]) => ({ day, revenue }))
     : [];
 
-  // Static category breakdown for chart illustration — replace with a real
-  // /api/reports/category-breakdown endpoint once sales volume accumulates.
-  const categoryData = [
-    { name: 'Groceries', value: 35 },
-    { name: 'Beverages', value: 25 },
-    { name: 'Baby Feeds', value: 18 },
-    { name: 'Toiletries', value: 12 },
-    { name: 'Cartons', value: 10 },
-  ];
+  // Real sales-by-category (last 30 days) from /api/dashboard.
+  const categoryData = data?.categoryBreakdown ?? [];
 
   return (
     <>
@@ -157,19 +151,25 @@ export default function DashboardPage() {
           </Card>
 
           <Card>
-            <CardTitle>Sales by Category</CardTitle>
-            <div className="h-[200px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2}>
-                    {categoryData.map((_, i) => (
-                      <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => `${v}%`} />
-                </PieChart>
-              </ResponsiveContainer>
+            <CardTitle>Sales by Category (30 days)</CardTitle>
+            <div className="flex h-[200px] w-full items-center justify-center">
+              {categoryData.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2}>
+                      {categoryData.map((_, i) => (
+                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="px-4 text-center text-[13px] text-[var(--text-muted)]">
+                  {loading ? 'Loading…' : 'No sales in the last 30 days yet — category breakdown will appear here once you start selling.'}
+                </p>
+              )}
             </div>
           </Card>
         </div>
@@ -185,30 +185,36 @@ export default function DashboardPage() {
               {data?.alerts.lowStock.length ? (
                 <AlertRow color="amber" title={`${data.alerts.lowStock.length} products low on stock`} sub="Needs restocking soon" />
               ) : null}
-              <AlertRow color="green" title="Daily backup complete" sub="Last synced: today 6:00 AM" />
               {!data?.alerts.lowStock.length && !data?.alerts.outOfStock.length && !loading && (
-                <p className="text-xs text-[var(--text-muted)]">No stock alerts right now — everything looks good.</p>
+                <AlertRow color="green" title="All stock levels healthy" sub="No products are low or out of stock." />
               )}
+              {loading && <p className="text-xs text-[var(--text-muted)]">Loading alerts…</p>}
             </div>
           </Card>
 
           <Card>
-            <CardTitle>About This Page</CardTitle>
-            <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
-              This dashboard aggregates live data from your sales, inventory, and debt records via{' '}
-              <code className="rounded bg-[var(--bg)] px-1 py-0.5 text-[11px]">/api/dashboard</code>. Connect a real
-              database with <code className="rounded bg-[var(--bg)] px-1 py-0.5 text-[11px]">npm run db:seed</code> to
-              populate it with sample Maxbuy Ventures data.
+            <CardTitle icon={HandCoins}>Outstanding Debts</CardTitle>
+            <p className="font-display text-[26px] font-extrabold text-[var(--text)]">
+              {loading ? '…' : formatCurrency(data?.stats.outstandingDebts || 0)}
             </p>
+            <p className="text-[13px] text-[var(--text-muted)]">
+              Owed by {data?.stats.debtorsCount ?? 0} customer{(data?.stats.debtorsCount ?? 0) === 1 ? '' : 's'}.
+            </p>
+            <button
+              onClick={() => router.push('/debts')}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-medium text-[var(--text)] transition-colors hover:border-[var(--green)] hover:text-[var(--green)]"
+            >
+              View Debts &amp; Credits
+            </button>
           </Card>
 
           <Card>
-            <CardTitle>Next Steps</CardTitle>
+            <CardTitle icon={Lightbulb}>Business Tips</CardTitle>
             <ul className="flex flex-col gap-2 text-[13px] text-[var(--text-muted)]">
-              <li>• Configure <code className="rounded bg-[var(--bg)] px-1 py-0.5 text-[11px]">DATABASE_URL</code> in .env</li>
-              <li>• Run <code className="rounded bg-[var(--bg)] px-1 py-0.5 text-[11px]">npx prisma db push</code></li>
-              <li>• Run <code className="rounded bg-[var(--bg)] px-1 py-0.5 text-[11px]">npm run db:seed</code></li>
-              <li>• Login with admin / maxbuy2024</li>
+              <li>• Restock fast-movers before they hit zero to avoid lost sales.</li>
+              <li>• Follow up on overdue debts weekly to keep cash flowing.</li>
+              <li>• Review thin-margin items and renegotiate supplier prices.</li>
+              <li>• Check the Reports page to spot your best-selling lines.</li>
             </ul>
           </Card>
         </div>

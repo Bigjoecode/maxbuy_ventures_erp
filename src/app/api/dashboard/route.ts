@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
   const startOfYesterday = new Date(startOfToday);
   startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
-  const [todaySales, yesterdaySales, products, debts, sevenDaysAgo] = await Promise.all([
+  const thirtyDaysAgo = new Date(startOfToday);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+
+  const [todaySales, yesterdaySales, products, debts, sevenDaysAgo, recentItems] = await Promise.all([
     prisma.sale.findMany({ where: { createdAt: { gte: startOfToday } } }),
     prisma.sale.findMany({ where: { createdAt: { gte: startOfYesterday, lt: startOfToday } } }),
     prisma.product.findMany({ where: { isActive: true } }),
@@ -24,6 +27,12 @@ export async function GET(req: NextRequest) {
       from.setDate(from.getDate() - 6);
       return prisma.sale.findMany({ where: { createdAt: { gte: from } } });
     })(),
+    // Real sales-by-category over the last 30 days (joins each sold line to its
+    // product's category). Powers the dashboard pie chart with actual data.
+    prisma.saleItem.findMany({
+      where: { sale: { createdAt: { gte: thirtyDaysAgo } } },
+      select: { lineTotal: true, product: { select: { category: { select: { name: true } } } } },
+    }),
   ]);
 
   const todayRevenue = todaySales.reduce((s, x) => s + x.totalAmount, 0);
@@ -51,6 +60,18 @@ export async function GET(req: NextRequest) {
   const lowStock = products.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert);
   const outOfStock = products.filter((p) => p.stockQuantity === 0);
 
+  // Sales-by-category breakdown (last 30 days): sum line revenue per category,
+  // keep the top 5 and roll the remainder into "Other".
+  const catMap: Record<string, number> = {};
+  for (const item of recentItems) {
+    const name = item.product?.category?.name || 'Uncategorized';
+    catMap[name] = (catMap[name] || 0) + item.lineTotal;
+  }
+  const rankedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+  const topCats = rankedCats.slice(0, 5).map(([name, value]) => ({ name, value }));
+  const otherTotal = rankedCats.slice(5).reduce((s, [, v]) => s + v, 0);
+  const categoryBreakdown = otherTotal > 0 ? [...topCats, { name: 'Other', value: otherTotal }] : topCats;
+
   return NextResponse.json({
     stats: {
       todayRevenue,
@@ -62,6 +83,7 @@ export async function GET(req: NextRequest) {
       revenueChangePct: Math.round(revenueChangePct * 10) / 10,
     },
     weeklySales: weeklyMap,
+    categoryBreakdown,
     alerts: {
       lowStock: lowStock.map((p) => ({ id: p.id, name: p.name, stockQuantity: p.stockQuantity })),
       outOfStock: outOfStock.map((p) => ({ id: p.id, name: p.name })),
