@@ -17,6 +17,8 @@ import {
   BarChart3,
   Bot,
   Settings,
+  ScrollText,
+  Trash2,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store/authStore';
@@ -58,6 +60,8 @@ const NAV_SECTIONS = [
     items: [
       { href: '/staff', label: 'Staff & Roles', icon: UserCog },
       { href: '/reports', label: 'Reports', icon: BarChart3 },
+      { href: '/activity-log', label: 'Activity Log', icon: ScrollText },
+      { href: '/recycle-bin', label: 'Recycle Bin', icon: Trash2 },
       { href: '/ai-assistant', label: 'AI Assistant', icon: Bot },
       { href: '/settings', label: 'Settings', icon: Settings },
     ],

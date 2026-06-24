@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
 import { hashPassword } from '@/lib/auth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const staffSchema = z.object({
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const staff = await prisma.staff.findMany({
+    where: { deletedAt: null },
     select: {
       id: true,
       name: true,
@@ -53,6 +55,7 @@ export async function POST(req: NextRequest) {
       data: { ...rest, passwordHash },
       select: { id: true, name: true, username: true, role: true, phone: true, isActive: true },
     });
+    await logActivity(auth.staffId, 'STAFF_CREATED', `Created staff: ${staff.username} (${staff.role})`);
     return NextResponse.json({ staff }, { status: 201 });
   } catch (err: any) {
     if (err.code === 'P2002') {

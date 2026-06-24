@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const productSchema = z.object({
@@ -27,10 +28,12 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('search') || '';
   const categoryId = searchParams.get('categoryId') || undefined;
   const status = searchParams.get('status'); // 'low' | 'out' | 'ok'
+  const deleted = searchParams.get('deleted') === '1';
 
   const products = await prisma.product.findMany({
     where: {
-      isActive: true,
+      isActive: deleted ? undefined : true,
+      deletedAt: deleted ? { not: null } : null,
       categoryId,
       OR: search
         ? [
@@ -78,9 +81,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await prisma.activityLog.create({
-    data: { staffId: auth.staffId, action: 'PRODUCT_CREATED', details: `Added product: ${product.name}` },
-  });
+  await logActivity(auth.staffId, 'PRODUCT_CREATED', `Added product: ${product.name}`);
 
   return NextResponse.json({ product }, { status: 201 });
 }

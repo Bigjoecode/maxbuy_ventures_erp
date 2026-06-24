@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const paymentSchema = z.object({
@@ -33,6 +34,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     data: { amountPaid: newAmountPaid, isSettled },
   });
 
+  await logActivity(
+    auth.staffId,
+    'DEBT_PAYMENT',
+    `Recorded ₦${parsed.data.amountPaid.toLocaleString()} payment${isSettled ? ' (settled)' : ''} on debt ${params.id}`
+  );
+
   return NextResponse.json({ debt: updated });
 }
 
@@ -45,5 +52,6 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!debt) return NextResponse.json({ error: 'Debt not found' }, { status: 404 });
 
   await prisma.debt.update({ where: { id: params.id }, data: { isSettled: true, amountPaid: debt.amount } });
+  await logActivity(auth.staffId, 'DEBT_SETTLED', `Marked debt ${params.id} as fully settled`);
   return NextResponse.json({ success: true });
 }

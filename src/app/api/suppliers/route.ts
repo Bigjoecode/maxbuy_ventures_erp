@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const supplierSchema = z.object({
@@ -16,7 +17,10 @@ export async function GET(req: NextRequest) {
   const auth = requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
+  const deleted = new URL(req.url).searchParams.get('deleted') === '1';
+
   const suppliers = await prisma.supplier.findMany({
+    where: { deletedAt: deleted ? { not: null } : null },
     include: { _count: { select: { products: true } } },
     orderBy: { name: 'asc' },
   });
@@ -36,5 +40,6 @@ export async function POST(req: NextRequest) {
   }
 
   const supplier = await prisma.supplier.create({ data: parsed.data });
+  await logActivity(auth.staffId, 'SUPPLIER_CREATED', `Added supplier: ${supplier.name}`);
   return NextResponse.json({ supplier }, { status: 201 });
 }

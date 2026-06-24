@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const customerSchema = z.object({
@@ -18,11 +19,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search') || '';
+  const deleted = searchParams.get('deleted') === '1';
 
   const customers = await prisma.customer.findMany({
-    where: search
-      ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { phone: { contains: search } }] }
-      : undefined,
+    where: {
+      deletedAt: deleted ? { not: null } : null,
+      ...(search
+        ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { phone: { contains: search } }] }
+        : {}),
+    },
     include: { debts: { where: { isSettled: false } } },
     orderBy: { totalSpent: 'desc' },
   });
@@ -42,5 +47,6 @@ export async function POST(req: NextRequest) {
   }
 
   const customer = await prisma.customer.create({ data: parsed.data });
+  await logActivity(auth.staffId, 'CUSTOMER_CREATED', `Added customer: ${customer.name}`);
   return NextResponse.json({ customer }, { status: 201 });
 }

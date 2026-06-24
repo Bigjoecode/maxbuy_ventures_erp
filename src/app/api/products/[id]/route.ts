@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const updateSchema = z.object({
@@ -70,26 +71,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     });
   }
 
-  await prisma.activityLog.create({
-    data: { staffId: auth.staffId, action: 'PRODUCT_UPDATED', details: `Updated product: ${product.name}` },
-  });
+  await logActivity(auth.staffId, 'PRODUCT_UPDATED', `Updated product: ${product.name}`);
 
   return NextResponse.json({ product });
 }
 
-// DELETE /api/products/[id] — soft delete
+// DELETE /api/products/[id] — soft delete (recoverable from the Recycle Bin)
 export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = requireAuth(req, 'inventory');
   if (auth instanceof NextResponse) return auth;
 
   const product = await prisma.product.update({
     where: { id: params.id },
-    data: { isActive: false },
+    data: { isActive: false, deletedAt: new Date() },
   });
 
-  await prisma.activityLog.create({
-    data: { staffId: auth.staffId, action: 'PRODUCT_DELETED', details: `Removed product: ${product.name}` },
-  });
+  await logActivity(auth.staffId, 'PRODUCT_DELETED', `Removed product: ${product.name}`);
 
   return NextResponse.json({ success: true });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const expenseSchema = z.object({
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
     },
     include: { recordedBy: { select: { name: true } } },
   });
+
+  await logActivity(auth.staffId, 'EXPENSE_RECORDED', `${data.category}: ₦${data.amount.toLocaleString()}`);
 
   return NextResponse.json({ expense }, { status: 201 });
 }

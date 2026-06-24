@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/apiAuth';
+import { logActivity } from '@/lib/audit';
 import { z } from 'zod';
 
 const updateSchema = z.object({
@@ -43,14 +44,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const customer = await prisma.customer.update({ where: { id: params.id }, data: parsed.data });
+  await logActivity(auth.staffId, 'CUSTOMER_UPDATED', `Updated customer: ${customer.name}`);
   return NextResponse.json({ customer });
 }
 
-// DELETE /api/customers/[id]
+// DELETE /api/customers/[id] — soft delete (preserves sales/debt history)
 export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = requireAuth(req, 'customers');
   if (auth instanceof NextResponse) return auth;
 
-  await prisma.customer.delete({ where: { id: params.id } });
+  const customer = await prisma.customer.update({
+    where: { id: params.id },
+    data: { deletedAt: new Date() },
+  });
+  await logActivity(auth.staffId, 'CUSTOMER_DELETED', `Removed customer: ${customer.name}`);
   return NextResponse.json({ success: true });
 }

@@ -63,6 +63,7 @@ model Staff {
   phone        String?
   role         Role     @default(CASHIER)
   isActive     Boolean  @default(true)
+  deletedAt    DateTime?
   branchId     String?
   branch       Branch?  @relation(fields: [branchId], references: [id])
   lastActiveAt DateTime?
@@ -119,6 +120,7 @@ model Supplier {
   productsSupplied String?
   balanceOwed  Float    @default(0)
   lastOrderAt  DateTime?
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
 
   products     Product[]
@@ -149,6 +151,7 @@ model Product {
   batchNumber   String?
 
   isActive      Boolean  @default(true)
+  deletedAt     DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -181,6 +184,7 @@ model Customer {
   type          CustomerType @default(RETAIL)
   loyaltyPoints Int          @default(0)
   totalSpent    Float        @default(0)
+  deletedAt     DateTime?
   createdAt     DateTime     @default(now())
 
   sales         Sale[]
