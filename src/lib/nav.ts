@@ -59,7 +59,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/activity-log', label: 'Activity Log', icon: ScrollText, permission: 'reports' },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: Trash2, permission: 'reports' },
       { href: '/ai-assistant', label: 'AI Assistant', icon: Bot, permission: 'reports' },
-      { href: '/settings', label: 'Settings', icon: Settings, permission: null },
+      { href: '/settings', label: 'Settings', icon: Settings, permission: 'settings' },
     ],
   },
 ];
