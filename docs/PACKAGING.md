@@ -20,14 +20,31 @@ There are three routes. Pick per need:
 
 ## 1. PWABuilder — fastest, no local toolchain
 
-Because the deployed site is a valid installable PWA (manifest + service worker),
-PWABuilder can package it for you:
+Because the deployed site is a valid installable PWA, PWABuilder packages it for
+you. The manifest is already hardened for this: it includes `id`, `scope`,
+`lang`/`dir`, maskable + standard icons, **screenshots** (wide + narrow), and
+shortcuts — so PWABuilder's report should pass cleanly.
 
 1. Deploy the app (staging/production) so it's reachable over HTTPS.
 2. Go to https://www.pwabuilder.com and enter your URL.
-3. Review the manifest/service-worker report (should pass — both are in place).
-4. **Android** → "Package for stores" → download the **AAB** (Play Store) + **APK** (sideload/testing). PWABuilder builds a Trusted Web Activity (TWA).
+3. Review the report — manifest + service worker should both pass.
+4. **Android** → "Package for stores" → download the **AAB** (Play Store) +
+   **APK** (sideload/testing). PWABuilder builds a Trusted Web Activity (TWA)
+   for the `com.maxbuy.erp` package id.
 5. **Windows** → download the **.msixbundle** for the Microsoft Store / sideload.
+
+### Android: finish Digital Asset Links (removes the browser address bar)
+A TWA must prove it owns the domain, or it shows a Chrome address bar.
+
+1. After PWABuilder generates the Android package, open the included
+   `assetlinks.json` (or get the **SHA-256 signing fingerprint** from Play
+   Console → *App signing*).
+2. Paste that fingerprint into [`public/.well-known/assetlinks.json`](../public/.well-known/assetlinks.json)
+   (replace `REPLACE_WITH_YOUR_APP_SIGNING_SHA256_FINGERPRINT`).
+3. Redeploy. Verify it's live at `https://your-domain/.well-known/assetlinks.json`.
+
+> Replace the placeholder store screenshots in `public/screenshots/` with real
+> captures of the running app for a better Play Store listing.
 
 This is the recommended path for the first store submission.
 
