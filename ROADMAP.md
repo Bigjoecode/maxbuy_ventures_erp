@@ -37,6 +37,7 @@ This is **not** a bare frontend prototype. It is a working full-stack Next.js ap
 - **2026-06-22:** Staging live on Vercel + Neon (schema pushed + seeded; admin login working).
 - **2026-06-23:** R2 + R4 done — httpOnly cookie auth with rotating refresh tokens and revocable `Session` model. Added `/api/auth/{refresh,logout,me}`, client silent-refresh, server-validated route gating. Full lifecycle smoke-tested (login/me/refresh/rotation/reuse-detection/logout) — all green.
 - **2026-06-23:** **Phase 1 complete.** R3 (atomic invoice numbers, race-fixed + throughput fix), R5 (rate limiting, CSP/security headers, CSRF Origin check), OTP password reset, and multi-device session management. All smoke-tested live: CSRF 403/200, 8 concurrent sales → unique invoices, OTP reset + reuse-block, rate-limit 429, sessions current-flag. Test data cleaned from staging.
+- **2026-06-24:** **Phase 5 complete (DevOps & deployment).** Multi-stage Dockerfile + docker-compose (app+Postgres+Nginx) + entrypoint, Nginx HTTPS reverse-proxy config, GitHub Actions CI (typecheck/lint/build) + manual VPS deploy workflow, and a full self-VPS `docs/DEPLOY.md` runbook (certbot TLS, seed, updates, rollback, migration guidance). Added `.eslintrc.json` (fixed one lint error); typecheck/lint/build all green locally. **All 5 roadmap phases now complete.**
 - **2026-06-24:** **Phase 4 complete (packaging setup).** Capacitor (Android) + Tauri (Windows desktop) configured to wrap the deployed PWA, npm scripts added, and `docs/PACKAGING.md` covers PWABuilder + Capacitor + Tauri build paths. Web build verified; native binaries require toolchains on a build machine (documented).
 - **2026-06-23:** **Phase 3 complete (data integrity & multi-branch foundation).** Soft-delete + Recycle Bin + restore (fixed destructive customer hard-delete), full audit-log instrumentation + viewer, branch-scoping + Branch management + stock transfers, and a pg_dump backup/restore toolkit with docs. Verified live: soft-delete→trash→restore round-trip, audit logging, branch creation + stock transfer (source 10→7, destination credited), over-transfer rejected. Test data cleaned.
 - **2026-06-23:** **Phase 2 complete (offline-first PWA).** Installable PWA (manifest + icons + install prompt), hand-rolled service worker (static caching + offline fallback), Dexie offline catalog/customer cache, offline POS that queues sales with optimistic stock + idempotent sync engine (sync on reconnect/load/SW), conflict flagging, and local sync notifications. Verified live: idempotent re-POST (`deduped`, no duplicate), PWA assets serve correctly. Also fixed the Phase 1 CSP that was blocking Google Fonts + Font Awesome. Test data cleaned.
@@ -86,10 +87,13 @@ Phasing note: you chose **Offline/PWA** as the first focus. Offline depends on a
 > Native binaries can't be compiled in this dev environment (no Android SDK / Rust toolchain). All config is in place and the web build is verified; run the documented commands on a build machine to produce APK/AAB and the Windows installer. PWABuilder needs no toolchain at all.
 
 ### Phase 5 — DevOps & deployment (1 week)
-- [ ] **R10:** Dockerfile + docker-compose (app + PostgreSQL + Nginx).
-- [ ] GitHub Actions: lint → typecheck → test → build → deploy.
-- [ ] Production hosting: **Railway or Render** (managed Postgres, simplest path) for first launch; Nginx reverse proxy + HTTPS. AWS later if scale demands.
-- [ ] Staging environment + migration runbook.
+- [x] **R10:** Multi-stage `Dockerfile` + `docker-compose.yml` (app + PostgreSQL + Nginx) + entrypoint (schema sync on boot) + `.dockerignore`.
+- [x] GitHub Actions: `ci.yml` (typecheck → lint → build on every push/PR) + `deploy.yml` (manual SSH deploy to VPS).
+- [x] Nginx reverse proxy + HTTPS config (`nginx/nginx.conf`).
+- [x] Production hosting: **self-managed VPS** runbook in `docs/DEPLOY.md` (provision → certbot TLS → compose up → seed → updates/rollback) + `.env.production.example`. (Staging already live on Vercel + Neon.)
+- [ ] Test suite (Vitest/Playwright) wired into CI — deferred follow-up.
+
+> Migration history: entrypoint uses `prisma db push` today (matches dev workflow); `docs/DEPLOY.md` documents adopting `prisma migrate` for production.
 
 ## 4. Open questions for you
 1. **Hosting budget/preference:** managed (Railway/Render — recommended, ~$20-50/mo to start) vs. self-managed VPS/AWS?

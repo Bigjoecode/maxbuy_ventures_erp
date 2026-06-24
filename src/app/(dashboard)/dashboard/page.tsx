@@ -84,7 +84,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="font-display text-[22px] font-extrabold text-[var(--text)]">Good morning! 👋</h2>
             <p className="text-[13px] text-[var(--text-muted)]">
-              Here's your business overview for today —{' '}
+              Here&apos;s your business overview for today —{' '}
               {new Date().toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
