@@ -23,7 +23,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Overview',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard' },
       { href: '/pos', label: 'Point of Sale', icon: ShoppingCart, permission: 'pos' },
     ],
   },
@@ -67,6 +67,18 @@ export const NAV_SECTIONS: NavSection[] = [
 export function canAccess(role: string | undefined | null, permission: string | null): boolean {
   if (permission === null) return true;
   return hasPermission(role, permission);
+}
+
+// First page this role is allowed to land on. Super admins get the dashboard;
+// every other role gets the first nav item they can access (e.g. a cashier
+// lands on POS). Used as the post-login redirect and the route-guard fallback.
+export function firstAccessiblePath(role: string | undefined | null): string {
+  for (const section of NAV_SECTIONS) {
+    for (const item of section.items) {
+      if (canAccess(role, item.permission)) return item.href;
+    }
+  }
+  return '/dashboard';
 }
 
 // Map a pathname to the permission its page requires (longest-prefix match).

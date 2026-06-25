@@ -7,7 +7,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { OfflineBanner } from '@/components/pwa/OfflineBanner';
 import { useAuthStore } from '@/store/authStore';
 import { apiFetch } from '@/lib/apiClient';
-import { canAccess, permissionForPath } from '@/lib/nav';
+import { canAccess, permissionForPath, firstAccessiblePath } from '@/lib/nav';
 
 export default function DashboardGroupLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,16 +23,29 @@ export default function DashboardGroupLayout({ children }: { children: React.Rea
       .then((data) => {
         if (!active) return;
         setUser(data.user);
-        // Role-based route guard: bounce to the dashboard if this role can't
-        // access the current page (defence-in-depth on top of API permissions).
+        // Role-based route guard: bounce to an allowed page if this role can't
+        // access the current one (defence-in-depth on top of API permissions).
         if (!canAccess(data.user?.role, permissionForPath(pathname))) {
-          router.replace('/dashboard');
+          router.replace(firstAccessiblePath(data.user?.role));
           return;
         }
         setChecked(true);
       })
       .catch(() => {
-        /* apiFetch already redirected to /login on auth failure */
+        if (!active) return;
+        // Network/server failure (e.g. fully offline): /api/auth/me is
+        // unreachable. If we still hold a persisted session, render the app
+        // from cache instead of hanging on the spinner — this is what makes
+        // offline navigation (POS, etc.) work. On a real 401, apiFetch has
+        // already cleared the store and redirected to /login, so there is no
+        // cached user and we simply let that redirect happen.
+        const cached = useAuthStore.getState().user;
+        if (!cached) return;
+        if (!canAccess(cached.role, permissionForPath(pathname))) {
+          router.replace(firstAccessiblePath(cached.role));
+          return;
+        }
+        setChecked(true);
       });
     return () => {
       active = false;

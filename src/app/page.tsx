@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { firstAccessiblePath } from '@/lib/nav';
 
 export default function HomePage() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function HomePage() {
   useEffect(() => {
     // The dashboard layout re-validates the session against the server cookie;
     // this is just an initial hint to avoid a needless bounce through /login.
-    router.replace(user ? '/dashboard' : '/login');
+    router.replace(user ? firstAccessiblePath(user.role) : '/login');
   }, [user, router]);
 
   return (

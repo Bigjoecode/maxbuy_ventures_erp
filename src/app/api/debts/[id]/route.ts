@@ -43,15 +43,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ debt: updated });
 }
 
-// DELETE /api/debts/[id] — mark fully settled (e.g. written off / fully paid)
+// DELETE /api/debts/[id] — permanently remove a debt record (e.g. entered in
+// error). To simply settle a debt, use PATCH with the remaining balance.
 export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = requireAuth(req, 'debts');
   if (auth instanceof NextResponse) return auth;
 
-  const debt = await prisma.debt.findUnique({ where: { id: params.id } });
+  const debt = await prisma.debt.findUnique({ where: { id: params.id }, include: { customer: true } });
   if (!debt) return NextResponse.json({ error: 'Debt not found' }, { status: 404 });
 
-  await prisma.debt.update({ where: { id: params.id }, data: { isSettled: true, amountPaid: debt.amount } });
-  await logActivity(auth.staffId, 'DEBT_SETTLED', `Marked debt ${params.id} as fully settled`);
+  await prisma.debt.delete({ where: { id: params.id } });
+  await logActivity(auth.staffId, 'DEBT_DELETED', `Deleted debt of ₦${debt.amount.toLocaleString()} for ${debt.customer?.name || 'customer'}`);
   return NextResponse.json({ success: true });
 }

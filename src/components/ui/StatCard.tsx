@@ -28,7 +28,7 @@ export function StatCard({ label, value, sub, subType = 'neutral', icon: Icon, c
       {/* Icon kept small and out of the value's way */}
       <Icon className={cn('absolute right-3 top-3 h-3.5 w-3.5 sm:right-[18px] sm:top-[18px] sm:h-[18px] sm:w-[18px]', colors.icon)} />
       <div className="mb-1 pr-6 text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)] sm:text-[11px]">{label}</div>
-      <div className="font-display text-[16px] font-extrabold leading-tight tabular-nums text-[var(--text)] sm:text-[22px] lg:text-[26px]">{value}</div>
+      <div className="font-display text-[16px] font-extrabold leading-tight tabular-nums text-[var(--text)] break-words sm:text-[22px] lg:text-[26px]">{value}</div>
       {sub && (
         <div className="mt-1 text-[10px] text-[var(--text-muted)] sm:text-[11px]">
           {subType === 'up' && <span className="font-semibold text-[var(--green)]">↑ </span>}

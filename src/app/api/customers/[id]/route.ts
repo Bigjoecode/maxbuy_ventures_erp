@@ -10,6 +10,7 @@ const updateSchema = z.object({
   email: z.string().email().optional().nullable(),
   address: z.string().optional().nullable(),
   type: z.enum(['RETAIL', 'WHOLESALE', 'VIP']).optional(),
+  loyaltyPoints: z.number().int().nonnegative().optional(),
 });
 
 interface Params {

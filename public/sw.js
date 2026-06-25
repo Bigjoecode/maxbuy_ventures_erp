@@ -2,16 +2,35 @@
  * Data (products, customers, queued sales) is handled in the app via IndexedDB
  * (Dexie), NOT here, so this SW deliberately ignores /api requests and never
  * caches mutations. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC_CACHE = `maxbuy-static-${VERSION}`;
 const PAGE_CACHE = `maxbuy-pages-${VERSION}`;
 const OFFLINE_URL = '/offline';
+
+// Core routes precached on install so navigating to them works offline even if
+// the user never visited them online. The HTML shell loads; data comes from
+// IndexedDB (Dexie) inside the app.
+const CORE_ROUTES = [
+  OFFLINE_URL,
+  '/dashboard',
+  '/pos',
+  '/inventory',
+  '/sales',
+  '/customers',
+  '/expenses',
+  '/debts',
+  '/expiry',
+  '/loyalty',
+  '/suppliers',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(PAGE_CACHE);
-      await cache.add(OFFLINE_URL).catch(() => {});
+      // Best-effort: cache each route individually so one failure (e.g. an
+      // auth-gated redirect) doesn't abort the whole precache.
+      await Promise.all(CORE_ROUTES.map((url) => cache.add(url).catch(() => {})));
       await self.skipWaiting();
     })()
   );

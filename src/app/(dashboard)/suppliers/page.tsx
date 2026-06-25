@@ -7,7 +7,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Card } from '@/components/ui/Card';
 import { Button, Badge, Modal, Input, FormGroup } from '@/components/ui';
 import { apiFetch } from '@/lib/apiClient';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { Supplier } from '@/types';
 
 const INITIAL = { name: '', contactName: '', phone: '', email: '', productsSupplied: '' };
@@ -16,6 +16,7 @@ export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(INITIAL);
   const [saving, setSaving] = useState(false);
 
@@ -31,17 +32,50 @@ export default function SuppliersPage() {
 
   function setF(k: string, v: string) { setForm((f) => ({ ...f, [k]: v })); }
 
+  function openAdd() {
+    setEditingId(null);
+    setForm(INITIAL);
+    setModalOpen(true);
+  }
+
+  function openEdit(s: any) {
+    setEditingId(s.id);
+    setForm({
+      name: s.name || '',
+      contactName: s.contactName || '',
+      phone: s.phone || '',
+      email: s.email || '',
+      productsSupplied: s.productsSupplied || '',
+    });
+    setModalOpen(true);
+  }
+
   async function handleSave() {
     if (!form.name) { toast.error('Supplier name is required'); return; }
     setSaving(true);
     try {
-      await apiFetch('/api/suppliers', { method: 'POST', body: JSON.stringify(form) });
-      toast.success('Supplier added!');
+      if (editingId) {
+        await apiFetch(`/api/suppliers/${editingId}`, { method: 'PATCH', body: JSON.stringify(form) });
+        toast.success('Supplier updated!');
+      } else {
+        await apiFetch('/api/suppliers', { method: 'POST', body: JSON.stringify(form) });
+        toast.success('Supplier added!');
+      }
       setModalOpen(false);
+      setEditingId(null);
       setForm(INITIAL);
       load();
     } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
+  }
+
+  async function handleDelete(s: any) {
+    if (!confirm(`Remove supplier "${s.name}"? This can be restored from the Recycle Bin.`)) return;
+    try {
+      await apiFetch(`/api/suppliers/${s.id}`, { method: 'DELETE' });
+      toast.success('Supplier removed');
+      load();
+    } catch (err: any) { toast.error(err.message); }
   }
 
   return (
@@ -53,7 +87,7 @@ export default function SuppliersPage() {
             <h2 className="font-display text-[22px] font-extrabold text-[var(--text)]">Suppliers</h2>
             <p className="text-[13px] text-[var(--text-muted)]">Manage your product suppliers and purchase relationships</p>
           </div>
-          <Button onClick={() => setModalOpen(true)}><Plus size={14} /> Add Supplier</Button>
+          <Button onClick={openAdd}><Plus size={14} /> Add Supplier</Button>
         </div>
 
         <Card>
@@ -91,10 +125,11 @@ export default function SuppliersPage() {
                       <div className="flex gap-1.5">
                         {s.phone && (
                           <a href={`tel:${s.phone}`}>
-                            <Button variant="secondary" size="sm"><Phone size={12} /></Button>
+                            <Button variant="secondary" size="sm" title="Call supplier"><Phone size={12} /></Button>
                           </a>
                         )}
-                        <Button variant="danger" size="sm"><Trash2 size={12} /></Button>
+                        <Button variant="secondary" size="sm" onClick={() => openEdit(s)} title="Edit supplier"><Edit size={12} /></Button>
+                        <Button variant="danger" size="sm" onClick={() => handleDelete(s)} title="Remove supplier"><Trash2 size={12} /></Button>
                       </div>
                     </td>
                   </tr>
@@ -111,11 +146,11 @@ export default function SuppliersPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Add Supplier"
+        title={editingId ? 'Edit Supplier' : 'Add Supplier'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Supplier'}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editingId ? 'Update Supplier' : 'Save Supplier'}</Button>
           </>
         }
       >

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { HandCoins, Clock, Users, CheckCircle, Plus, MessageCircle, Check } from 'lucide-react';
+import { HandCoins, Clock, Users, CheckCircle, Plus, MessageCircle, Check, Trash2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card } from '@/components/ui/Card';
@@ -61,10 +61,21 @@ export default function DebtsPage() {
     finally { setSaving(false); }
   }
 
-  async function handleMarkPaid(debtId: string, fullAmount: number) {
+  async function handleMarkPaid(debt: any) {
+    const balance = debt.amount - debt.amountPaid;
+    if (balance <= 0) { toast('Already settled'); return; }
     try {
-      await apiFetch(`/api/debts/${debtId}`, { method: 'DELETE' });
+      await apiFetch(`/api/debts/${debt.id}`, { method: 'PATCH', body: JSON.stringify({ amountPaid: balance }) });
       toast.success('Marked as fully paid!');
+      load();
+    } catch (err: any) { toast.error(err.message); }
+  }
+
+  async function handleDelete(debt: any) {
+    if (!confirm(`Permanently delete this debt of ${formatCurrency(debt.amount)} for ${debt.customer?.name || 'customer'}? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/api/debts/${debt.id}`, { method: 'DELETE' });
+      toast.success('Debt deleted');
       load();
     } catch (err: any) { toast.error(err.message); }
   }
@@ -144,13 +155,14 @@ export default function DebtsPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex gap-1.5">
-                            <Button size="sm" onClick={() => handleMarkPaid(d.id, d.amount)} title="Mark fully paid"><Check size={12} /> Paid</Button>
+                            <Button size="sm" onClick={() => handleMarkPaid(d)} title="Mark fully paid"><Check size={12} /> Paid</Button>
                             <Button variant="secondary" size="sm" onClick={() => { setPayModal({ open: true, debt: d }); setPayAmount(''); }} title="Partial payment">Partial</Button>
                             {d.customer?.phone && (
                               <Button variant="amber" size="sm" onClick={() => window.open(`https://wa.me/${d.customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${d.customer.name}, this is a payment reminder for ₦${balance.toLocaleString()} owed to Maxbuy Ventures. Please make payment at your earliest convenience. Thank you.`)}`)}>
                                 <MessageCircle size={12} />
                               </Button>
                             )}
+                            <Button variant="danger" size="sm" onClick={() => handleDelete(d)} title="Delete debt"><Trash2 size={12} /></Button>
                           </div>
                         </td>
                       </tr>

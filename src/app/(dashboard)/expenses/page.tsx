@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Wallet, CalendarDays, Sun, TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { Wallet, CalendarDays, Sun, TrendingUp, Plus, Trash2, Edit } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card } from '@/components/ui/Card';
@@ -18,6 +18,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('month');
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
@@ -32,20 +33,50 @@ export default function ExpensesPage() {
 
   useEffect(() => { void load(period); }, [period, load]);
 
+  function openAdd() {
+    setEditingId(null);
+    setForm({ ...EMPTY, date: new Date().toISOString().split('T')[0] });
+    setModalOpen(true);
+  }
+
+  function openEdit(e: any) {
+    setEditingId(e.id);
+    setForm({
+      category: e.category,
+      description: e.description || '',
+      amount: String(e.amount),
+      date: new Date(e.date).toISOString().split('T')[0],
+    });
+    setModalOpen(true);
+  }
+
   async function handleSave() {
     if (!form.amount) { toast.error('Amount is required'); return; }
     setSaving(true);
     try {
-      await apiFetch('/api/expenses', {
-        method: 'POST',
-        body: JSON.stringify({ ...form, amount: parseFloat(form.amount), date: new Date(form.date).toISOString() }),
-      });
-      toast.success('Expense recorded!');
+      const payload = { ...form, amount: parseFloat(form.amount), date: new Date(form.date).toISOString() };
+      if (editingId) {
+        await apiFetch(`/api/expenses/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        toast.success('Expense updated!');
+      } else {
+        await apiFetch('/api/expenses', { method: 'POST', body: JSON.stringify(payload) });
+        toast.success('Expense recorded!');
+      }
       setModalOpen(false);
+      setEditingId(null);
       setForm(EMPTY);
       await load(period);
     } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
+  }
+
+  async function handleDelete(e: any) {
+    if (!confirm(`Delete this ${catLabel(e.category)} expense of ${formatCurrency(e.amount)}? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/api/expenses/${e.id}`, { method: 'DELETE' });
+      toast.success('Expense deleted');
+      await load(period);
+    } catch (err: any) { toast.error(err.message); }
   }
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
@@ -78,7 +109,7 @@ export default function ExpensesPage() {
               <option value="week">This Week</option>
               <option value="month">This Month</option>
             </Select>
-            <Button onClick={() => { setForm({ ...EMPTY, date: new Date().toISOString().split('T')[0] }); setModalOpen(true); }}><Plus size={14} /> Add Expense</Button>
+            <Button onClick={openAdd}><Plus size={14} /> Add Expense</Button>
           </div>
         </div>
 
@@ -97,7 +128,7 @@ export default function ExpensesPage() {
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr>
-                    {['Date', 'Category', 'Description', 'Amount', 'Recorded By'].map((h) => (
+                    {['Date', 'Category', 'Description', 'Amount', 'Recorded By', 'Actions'].map((h) => (
                       <th key={h} className="border-b-2 border-[var(--border)] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -110,9 +141,15 @@ export default function ExpensesPage() {
                       <td className="px-3 py-2.5 text-[13px]">{e.description || '—'}</td>
                       <td className="px-3 py-2.5 font-bold text-[var(--red)] text-[13px]">{formatCurrency(e.amount)}</td>
                       <td className="px-3 py-2.5 text-[12px] text-[var(--text-muted)]">{e.recordedBy?.name || '—'}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-1.5">
+                          <Button variant="secondary" size="sm" onClick={() => openEdit(e)} title="Edit expense"><Edit size={12} /></Button>
+                          <Button variant="danger" size="sm" onClick={() => handleDelete(e)} title="Delete expense"><Trash2 size={12} /></Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
-                  {expenses.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-[var(--text-muted)]">No expenses recorded for this period</td></tr>}
+                  {expenses.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-[var(--text-muted)]">No expenses recorded for this period</td></tr>}
                 </tbody>
               </table>
             )}
@@ -120,8 +157,8 @@ export default function ExpensesPage() {
         </Card>
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Record Expense"
-        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Record Expense'}</Button></>}>
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Expense' : 'Record Expense'}
+        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update Expense' : 'Record Expense'}</Button></>}>
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <FormGroup label="Category">
             <Select value={form.category} onChange={f('category')}>

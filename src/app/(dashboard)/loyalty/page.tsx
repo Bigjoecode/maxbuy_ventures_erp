@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Star, Coins, Gift, Flame, Trophy, Crown } from 'lucide-react';
+import { Star, Coins, Flame, Trophy, Crown, Plus, Edit, UserMinus } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui';
+import { Badge, Button, Modal, FormGroup, Input, Select } from '@/components/ui';
 import { apiFetch } from '@/lib/apiClient';
 import { formatCurrency } from '@/lib/utils';
 import { Customer } from '@/types';
@@ -18,15 +18,69 @@ function getTier(points: number): { label: string; color: 'green' | 'amber' | 'p
 }
 
 export default function LoyaltyPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Customer | null>(null);
+  const [pickId, setPickId] = useState('');
+  const [points, setPoints] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    apiFetch<{ customers: Customer[] }>('/api/customers')
-      .then((r) => setCustomers(r.customers.filter((c) => c.loyaltyPoints > 0).sort((a, b) => b.loyaltyPoints - a.loyaltyPoints)))
-      .catch((err) => toast.error(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await apiFetch<{ customers: Customer[] }>('/api/customers');
+      setAllCustomers(r.customers);
+    } catch (err: any) { toast.error(err.message); }
+    finally { setLoading(false); }
+  }
+
+  const customers = allCustomers
+    .filter((c) => c.loyaltyPoints > 0)
+    .sort((a, b) => b.loyaltyPoints - a.loyaltyPoints);
+
+  function openAdd() {
+    setEditing(null);
+    setPickId('');
+    setPoints('');
+    setModalOpen(true);
+  }
+
+  function openEdit(c: Customer) {
+    setEditing(c);
+    setPickId(c.id);
+    setPoints(String(c.loyaltyPoints));
+    setModalOpen(true);
+  }
+
+  async function handleSave() {
+    const targetId = editing ? editing.id : pickId;
+    if (!targetId) { toast.error('Select a customer'); return; }
+    const pts = parseInt(points, 10);
+    if (isNaN(pts) || pts < 0) { toast.error('Enter a valid points value'); return; }
+    setSaving(true);
+    try {
+      await apiFetch(`/api/customers/${targetId}`, { method: 'PATCH', body: JSON.stringify({ loyaltyPoints: pts }) });
+      toast.success(editing ? 'Points updated' : 'Member added to loyalty program');
+      setModalOpen(false);
+      setEditing(null);
+      load();
+    } catch (err: any) { toast.error(err.message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleRemove(c: Customer) {
+    if (!confirm(`Remove ${c.name} from the loyalty program? Their points reset to 0 (the customer is kept).`)) return;
+    try {
+      await apiFetch(`/api/customers/${c.id}`, { method: 'PATCH', body: JSON.stringify({ loyaltyPoints: 0 }) });
+      toast.success('Removed from loyalty program');
+      load();
+    } catch (err: any) { toast.error(err.message); }
+  }
+
+  const nonMembers = allCustomers.filter((c) => c.loyaltyPoints === 0);
 
   const totalPoints = customers.reduce((s, c) => s + c.loyaltyPoints, 0);
   const goldMembers = customers.filter((c) => c.loyaltyPoints >= 1000).length;
@@ -39,9 +93,12 @@ export default function LoyaltyPage() {
     <>
       <Topbar title="Loyalty Program" />
       <div className="flex-1 p-4 md:p-6">
-        <div className="mb-5">
-          <h2 className="font-display text-[22px] font-extrabold text-[var(--text)]">Loyalty Program</h2>
-          <p className="text-[13px] text-[var(--text-muted)]">Reward your best customers and drive repeat purchases</p>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-[22px] font-extrabold text-[var(--text)]">Loyalty Program</h2>
+            <p className="text-[13px] text-[var(--text-muted)]">Reward your best customers and drive repeat purchases</p>
+          </div>
+          <Button onClick={openAdd}><Plus size={14} /> Add Member</Button>
         </div>
 
         <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
@@ -111,7 +168,7 @@ export default function LoyaltyPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Rank', 'Customer', 'Type', 'Points', 'Tier', 'Total Spent', 'Redeemable'].map((h) => (
+                  {['Rank', 'Customer', 'Type', 'Points', 'Tier', 'Total Spent', 'Redeemable', 'Actions'].map((h) => (
                     <th key={h} className="border-b-2 border-[var(--border)] pb-2 pr-4 pt-1 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{h}</th>
                   ))}
                 </tr>
@@ -128,14 +185,43 @@ export default function LoyaltyPage() {
                       <td className="py-3 pr-4"><Badge color={tier.color}>{tier.icon} {tier.label}</Badge></td>
                       <td className="py-3 pr-4 font-semibold text-[var(--green)]">{formatCurrency(c.totalSpent)}</td>
                       <td className="py-3 pr-4 text-[13px] text-[var(--blue)]">{formatCurrency((c.loyaltyPoints / 100) * 500)}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex gap-1.5">
+                          <Button variant="secondary" size="sm" onClick={() => openEdit(c)} title="Adjust points"><Edit size={12} /></Button>
+                          <Button variant="danger" size="sm" onClick={() => handleRemove(c)} title="Remove from program"><UserMinus size={12} /></Button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
+                {!loading && customers.length === 0 && (
+                  <tr><td colSpan={8} className="py-8 text-center text-sm text-[var(--text-muted)]">No loyalty members yet. Use “Add Member” to enroll a customer.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         </Card>
       </div>
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? `Adjust Points — ${editing.name}` : 'Add Loyalty Member'}
+        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editing ? 'Update Points' : 'Add Member'}</Button></>}>
+        <div className="grid grid-cols-1 gap-3.5">
+          {!editing && (
+            <FormGroup label="Customer">
+              <Select value={pickId} onChange={(e) => setPickId(e.target.value)}>
+                <option value="">Select a customer</option>
+                {nonMembers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` — ${c.phone}` : ''}</option>)}
+              </Select>
+            </FormGroup>
+          )}
+          <FormGroup label="Loyalty Points">
+            <Input type="number" min={0} value={points} onChange={(e) => setPoints(e.target.value)} placeholder="e.g. 100" />
+          </FormGroup>
+          {!editing && nonMembers.length === 0 && (
+            <p className="text-[12px] text-[var(--text-muted)]">Every customer already has points. Use the Edit action in the table to adjust an existing member.</p>
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

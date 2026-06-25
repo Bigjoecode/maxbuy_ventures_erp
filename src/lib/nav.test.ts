@@ -6,7 +6,7 @@ describe('permissionForPath', () => {
     expect(permissionForPath('/staff')).toBe('staff');
     expect(permissionForPath('/pos')).toBe('pos');
     expect(permissionForPath('/inventory')).toBe('inventory');
-    expect(permissionForPath('/dashboard')).toBeNull(); // open to all
+    expect(permissionForPath('/dashboard')).toBe('dashboard'); // super-admin only
     expect(permissionForPath('/settings')).toBe('settings');
   });
 });
@@ -33,9 +33,10 @@ describe('canAccess (role gating)', () => {
     }
   });
 
-  it('keeps the dashboard open to every role', () => {
+  it('limits the dashboard to SUPER_ADMIN only', () => {
+    expect(canAccess('SUPER_ADMIN', permissionForPath('/dashboard'))).toBe(true);
     for (const role of ['CASHIER', 'STOCK_KEEPER', 'SALES_REP', 'MANAGER']) {
-      expect(canAccess(role, permissionForPath('/dashboard'))).toBe(true);
+      expect(canAccess(role, permissionForPath('/dashboard'))).toBe(false);
     }
   });
 });

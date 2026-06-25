@@ -15,7 +15,7 @@ interface QuickItem {
 }
 
 const QUICK: QuickItem[] = [
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard, permission: null },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard, permission: 'dashboard' },
   { href: '/pos', label: 'POS', icon: ShoppingCart, permission: 'pos' },
   { href: '/inventory', label: 'Stock', icon: Boxes, permission: 'inventory' },
   { href: '/customers', label: 'Customers', icon: Users, permission: 'customers' },

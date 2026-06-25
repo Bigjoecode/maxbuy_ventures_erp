@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import { firstAccessiblePath } from '@/lib/nav';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function LoginPage() {
       }
       setUser(data.user);
       toast.success(`Welcome back, ${data.user.name}!`);
-      router.push('/dashboard');
+      router.push(firstAccessiblePath(data.user.role));
     } catch {
       setError('Unable to reach the server. Please try again.');
     } finally {
