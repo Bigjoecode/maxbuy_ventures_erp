@@ -260,6 +260,7 @@ model Debt {
   dueDate     DateTime?
   isSettled   Boolean  @default(false)
   createdAt   DateTime @default(now())
+  deletedAt   DateTime?
 
   @@index([customerId])
 }
@@ -274,6 +275,7 @@ model Expense {
   recordedById String
   recordedBy  Staff           @relation(fields: [recordedById], references: [id])
   date        DateTime        @default(now())
+  deletedAt   DateTime?
 
   @@index([date])
 }

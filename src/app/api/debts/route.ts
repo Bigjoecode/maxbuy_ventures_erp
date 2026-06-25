@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const debts = await prisma.debt.findMany({
-    where: { isSettled: false },
+    where: { isSettled: false, deletedAt: null },
     include: { customer: true },
     orderBy: { dueDate: 'asc' },
   });

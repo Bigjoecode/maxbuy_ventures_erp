@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ expense });
 }
 
-// DELETE /api/expenses/[id] — remove an expense (hard delete; no soft-delete on this model)
+// DELETE /api/expenses/[id] — soft delete (recoverable from the Recycle Bin).
 export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = requireAuth(req, 'expenses');
   if (auth instanceof NextResponse) return auth;
@@ -48,7 +48,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const expense = await prisma.expense.findUnique({ where: { id: params.id } });
   if (!expense) return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
 
-  await prisma.expense.delete({ where: { id: params.id } });
-  await logActivity(auth.staffId, 'EXPENSE_DELETED', `Deleted expense — ${expense.category}: ₦${expense.amount.toLocaleString()}`);
+  await prisma.expense.update({ where: { id: params.id }, data: { deletedAt: new Date() } });
+  await logActivity(auth.staffId, 'EXPENSE_DELETED', `Removed expense — ${expense.category}: ₦${expense.amount.toLocaleString()}`);
   return NextResponse.json({ success: true });
 }

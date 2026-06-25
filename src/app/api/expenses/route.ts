@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   const expenses = await prisma.expense.findMany({
-    where: { ...branchScope(auth), ...(from ? { date: { gte: from } } : {}) },
+    where: { ...branchScope(auth), deletedAt: null, ...(from ? { date: { gte: from } } : {}) },
     include: { recordedBy: { select: { name: true } } },
     orderBy: { date: 'desc' },
   });
